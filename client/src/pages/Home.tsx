@@ -152,13 +152,13 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <button 
               onClick={scrollPrev}
-              className="h-10 w-10 rounded-full border border-border flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
+              className="h-10 w-10 rounded-full border border-black flex items-center justify-center hover:bg-black hover:text-white transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button 
               onClick={scrollNext}
-              className="h-10 w-10 rounded-full border border-border flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
+              className="h-10 w-10 rounded-full border border-black flex items-center justify-center hover:bg-black hover:text-white transition-colors"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
