@@ -858,6 +858,19 @@ export default function Dashboard() {
                   />
                 </div>
 
+                <div className="border-t border-border my-6"></div>
+                <h3 className="font-display text-lg">Frase de Impacto (Home)</h3>
+                
+                <div className="grid gap-2">
+                  <Label>Texto da Frase</Label>
+                  <Textarea 
+                    value={brandingForm.impactPhrase} 
+                    onChange={(e) => setBrandingForm({...brandingForm, impactPhrase: e.target.value})}
+                    className="rounded-none font-display text-xl"
+                    rows={3}
+                  />
+                </div>
+
                 <Button onClick={handleSaveBranding} className="rounded-none bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs mt-4">
                   Salvar Alterações
                 </Button>

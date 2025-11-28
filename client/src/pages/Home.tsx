@@ -11,6 +11,8 @@ import necklaceImage from '@assets/generated_images/gold_necklace_product_shot.p
 import campaignVideo from '@assets/generated_videos/b&w_jewelry_fashion_b-roll.mp4';
 import useEmblaCarousel from 'embla-carousel-react';
 
+import { testimonials } from '@/lib/mockData';
+
 export default function Home() {
   const { products, branding } = useProducts();
   const { scrollY } = useScroll();
@@ -163,7 +165,7 @@ export default function Home() {
       {/* Horizontal Product Carousel Section */}
       <section className="py-32 pl-4 md:pl-12 overflow-hidden">
         <div className="flex justify-between items-end pr-12 mb-16">
-          <h2 className="font-display text-4xl font-medium">Últimos Drops</h2>
+          <h2 className="font-display text-4xl font-medium">Bestsellers</h2>
           <div className="flex items-center gap-4">
             <button 
               onClick={scrollPrev}
@@ -208,6 +210,39 @@ export default function Home() {
         
         <div className="mt-12 pr-12 flex justify-center md:justify-end">
            <Link href="/shop" className="font-mono text-xs uppercase tracking-widest hover:underline underline-offset-4">Ver Toda a Coleção</Link>
+        </div>
+      </section>
+
+      {/* Impact Phrase & Testimonials */}
+      <section className="py-32 bg-secondary/20">
+        <div className="container mx-auto px-6 md:px-12">
+          <div className="mb-24 text-center max-w-4xl mx-auto">
+            <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-6 block">Know How</span>
+            <h2 className="font-display text-4xl md:text-6xl font-medium leading-tight tracking-tight">
+              "{branding.impactPhrase}"
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-border pt-16">
+            {testimonials.map((testimonial) => (
+              <div key={testimonial.id} className="space-y-6">
+                 <div className="flex gap-1">
+                   {[1,2,3,4,5].map(i => (
+                     <span key={i} className="text-xs">★</span>
+                   ))}
+                 </div>
+                 <p className="font-serif text-xl leading-relaxed text-foreground/80 italic">
+                   "{testimonial.text}"
+                 </p>
+                 <div>
+                   <div className="font-display text-lg">{testimonial.name}</div>
+                   <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                     {testimonial.role} — {testimonial.location}
+                   </div>
+                 </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

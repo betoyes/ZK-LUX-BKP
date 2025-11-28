@@ -38,6 +38,7 @@ export interface Branding {
   journalHeroImage: string;
   journalHeroTitle: string;
   journalHeroSubtitle: string;
+  impactPhrase: string;
 }
 
 export const initialBranding: Branding = {
@@ -50,8 +51,33 @@ export const initialBranding: Branding = {
   manifestoText: 'Acreditamos em joias que falam a linguagem da arquitetura moderna. Linhas limpas, formas ousadas e uma presença inegável.',
   journalHeroImage: heroImage,
   journalHeroTitle: 'O Novo Luxo é Sustentável',
-  journalHeroSubtitle: 'Editorial'
+  journalHeroSubtitle: 'Editorial',
+  impactPhrase: 'A perfeição não é um detalhe. É a única opção.'
 };
+
+export const testimonials = [
+  {
+    id: 1,
+    name: "Isabella Ferrari",
+    role: "Arquiteta",
+    text: "Peças que transcendem a moda. É como usar uma escultura moderna.",
+    location: "São Paulo"
+  },
+  {
+    id: 2,
+    name: "Clarice Lispector N.",
+    role: "Editora de Arte",
+    text: "A ZK REZK redefiniu o que eu entendo por elegância. Minimalismo com alma.",
+    location: "Rio de Janeiro"
+  },
+  {
+    id: 3,
+    name: "Sofia Copollina",
+    role: "Diretora Criativa",
+    text: "O atendimento é tão impecável quanto o design. Uma experiência de luxo completa.",
+    location: "Milão"
+  }
+];
 
 export interface JournalPost {
   id: number;
