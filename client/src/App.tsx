@@ -12,6 +12,8 @@ import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Dashboard from "@/pages/admin/Dashboard";
+import Login from "@/pages/Login";
+import AdminLogin from "@/pages/admin/AdminLogin";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 
@@ -19,12 +21,14 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
       <Route path="/shop" component={Shop} />
       <Route path="/collections" component={Shop} /> {/* Alias for Shop */}
       <Route path="/product/:id" component={Product} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
-      <Route path="/admin" component={Dashboard} />
+      <Route path="/admin" component={AdminLogin} />
+      <Route path="/admin/dashboard" component={Dashboard} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />
       <Route component={NotFound} />

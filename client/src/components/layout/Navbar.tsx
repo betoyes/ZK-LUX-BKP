@@ -60,6 +60,12 @@ export function Navbar() {
                 SACOLA (0)
               </button>
             </Link>
+
+            <Link href="/login">
+              <button className="hover:opacity-70 transition-opacity font-mono text-sm flex items-center gap-2">
+                LOGIN
+              </button>
+            </Link>
             
             {/* Mobile Menu */}
             <div className="md:hidden">
