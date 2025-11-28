@@ -15,9 +15,8 @@ export function Footer() {
               {branding.companyName}
             </div>
             <div className="mt-8 max-w-sm">
-              <p className="font-mono text-xs text-muted-foreground uppercase leading-relaxed">
-                Criamos objetos de desejo para o mundo moderno. <br/>
-                Design atemporal encontra atitude contemporânea.
+              <p className="font-mono text-xs text-muted-foreground uppercase leading-relaxed line-clamp-3">
+                {branding.manifestoText}
               </p>
             </div>
           </div>
@@ -26,6 +25,7 @@ export function Footer() {
           <div className="md:col-span-2">
             <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Loja</h4>
             <ul className="space-y-4">
+              <li><Link href="/shop" className="font-display text-xl hover:text-muted-foreground transition-colors">Ver Tudo</Link></li>
               <li><Link href="/shop?category=aneis" className="font-display text-xl hover:text-muted-foreground transition-colors">Anéis</Link></li>
               <li><Link href="/shop?category=colares" className="font-display text-xl hover:text-muted-foreground transition-colors">Colares</Link></li>
               <li><Link href="/shop?category=brincos" className="font-display text-xl hover:text-muted-foreground transition-colors">Brincos</Link></li>
@@ -33,11 +33,11 @@ export function Footer() {
           </div>
 
           <div className="md:col-span-2">
-            <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Empresa</h4>
+            <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Editorial</h4>
             <ul className="space-y-4">
-              <li><Link href="/about" className="font-display text-xl hover:text-muted-foreground transition-colors">Manifesto</Link></li>
-              <li><Link href="/contact" className="font-display text-xl hover:text-muted-foreground transition-colors">Contato</Link></li>
-              <li><Link href="/admin" className="font-display text-xl hover:text-muted-foreground transition-colors">Admin</Link></li>
+              <li><Link href="/journal" className="font-display text-xl hover:text-muted-foreground transition-colors">Journal</Link></li>
+              <li><Link href="/lookbook" className="font-display text-xl hover:text-muted-foreground transition-colors">Lookbook</Link></li>
+              <li><Link href="/about" className="font-display text-xl hover:text-muted-foreground transition-colors">Sobre</Link></li>
             </ul>
           </div>
           
