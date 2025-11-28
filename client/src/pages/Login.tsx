@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Info } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -29,12 +28,27 @@ export default function Login() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Mock login/register
-    toast({
-      title: isLogin ? "Bem-vindo de volta" : "Conta criada",
-      description: "Você está logado no modo de demonstração.",
-    });
-    setTimeout(() => setLocation('/'), 1000);
+    // Demo Login Logic
+    if (isLogin && values.email === "cliente@aurum.com" && values.password === "cliente") {
+      toast({
+        title: "Bem-vindo de volta",
+        description: "Login efetuado com sucesso.",
+      });
+      setTimeout(() => setLocation('/account'), 1000);
+    } else if (isLogin) {
+      toast({
+         variant: "destructive",
+         title: "Falha no Login",
+         description: "Credenciais inválidas.",
+      });
+    } else {
+      // Mock Registration
+      toast({
+        title: "Conta criada",
+        description: "Bem-vindo ao Aurum.",
+      });
+      setTimeout(() => setLocation('/account'), 1000);
+    }
   }
 
   return (
@@ -66,6 +80,18 @@ export default function Login() {
             <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest">
               {isLogin ? 'Bem-vindo de volta ao círculo interno.' : 'Junte-se ao Aurum Archive.'}
             </p>
+            
+            {/* Demo Credentials Box */}
+            {isLogin && (
+              <div className="mt-6 p-4 bg-secondary/50 border border-border flex gap-3 items-start">
+                <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <div className="text-xs font-mono">
+                  <p className="font-bold uppercase tracking-widest mb-1">Acesso Demo</p>
+                  <p>Email: <span className="select-all">cliente@aurum.com</span></p>
+                  <p>Senha: <span className="select-all">cliente</span></p>
+                </div>
+              </div>
+            )}
           </div>
 
           <Form {...form}>

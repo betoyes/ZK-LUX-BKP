@@ -14,6 +14,7 @@ import Checkout from "@/pages/Checkout";
 import Dashboard from "@/pages/admin/Dashboard";
 import Login from "@/pages/Login";
 import AdminLogin from "@/pages/admin/AdminLogin";
+import Account from "@/pages/Account";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 
@@ -22,6 +23,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
+      <Route path="/account" component={Account} />
       <Route path="/shop" component={Shop} />
       <Route path="/collections" component={Shop} /> {/* Alias for Shop */}
       <Route path="/product/:id" component={Product} />

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Lock } from 'lucide-react';
+import { Lock, ShieldAlert } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -37,7 +37,7 @@ export default function AdminLogin() {
       toast({
         variant: "destructive",
         title: "Acesso negado",
-        description: "Credenciais inválidas (Use admin@aurum.com / admin)",
+        description: "Credenciais inválidas.",
       });
     }
   }
@@ -45,7 +45,7 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
       <div className="w-full max-w-md border border-white/20 p-8 md:p-12 bg-zinc-950">
-        <div className="mb-12 text-center">
+        <div className="mb-10 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/10 mb-6">
             <Lock className="h-5 w-5 text-white" />
           </div>
@@ -53,6 +53,16 @@ export default function AdminLogin() {
           <p className="font-mono text-xs text-white/50 uppercase tracking-widest">
             Acesso Restrito
           </p>
+        </div>
+
+        {/* Demo Credentials */}
+        <div className="mb-8 p-4 border border-white/10 bg-white/5 flex items-start gap-3">
+          <ShieldAlert className="h-5 w-5 text-white/70 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+             <p className="font-mono text-[10px] uppercase tracking-widest text-white/70 font-bold">Credenciais Demo</p>
+             <p className="font-mono text-xs text-white/50">User: <span className="text-white select-all">admin@aurum.com</span></p>
+             <p className="font-mono text-xs text-white/50">Pass: <span className="text-white select-all">admin</span></p>
+          </div>
         </div>
 
         <Form {...form}>
