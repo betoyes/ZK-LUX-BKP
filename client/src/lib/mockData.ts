@@ -13,6 +13,7 @@ export interface Product {
   gallery?: string[];
   category: string;
   collection: string;
+  specs?: string[];
   isNew?: boolean;
 }
 

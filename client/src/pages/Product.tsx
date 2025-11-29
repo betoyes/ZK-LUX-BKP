@@ -149,10 +149,18 @@ export default function Product() {
                   <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">Especificações Técnicas</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground font-light pb-6">
                     <ul className="space-y-2">
-                      <li>Material: Ouro 18K Sólido</li>
-                      <li>Gema: Diamante Certificado Livre de Conflitos</li>
-                      <li>Peso: Aprox. 5g</li>
-                      <li>Origem: Feito à mão na Itália</li>
+                      {product.specs && product.specs.length > 0 ? (
+                        product.specs.map((spec, idx) => (
+                          <li key={idx}>{spec}</li>
+                        ))
+                      ) : (
+                        <>
+                          <li>Material: Ouro 18K Sólido</li>
+                          <li>Gema: Diamante Certificado Livre de Conflitos</li>
+                          <li>Peso: Aprox. 5g</li>
+                          <li>Origem: Feito à mão na Itália</li>
+                        </>
+                      )}
                     </ul>
                   </AccordionContent>
                 </AccordionItem>

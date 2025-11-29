@@ -55,7 +55,8 @@ export default function Dashboard() {
     collection: '',
     image: '',
     imageColor: '',
-    gallery: [] as string[]
+    gallery: [] as string[],
+    specs: ''
   });
 
   const [catFormData, setCatFormData] = useState({ name: '', description: '' });
@@ -139,6 +140,7 @@ export default function Dashboard() {
       image: formData.image || getMockImage(formData.category),
       imageColor: formData.imageColor || formData.image || getMockImage(formData.category),
       gallery: formData.gallery,
+      specs: formData.specs.split('\n').filter(s => s.trim() !== ''),
       isNew: true
     });
 
@@ -158,7 +160,8 @@ export default function Dashboard() {
       collection: formData.collection,
       image: formData.image,
       imageColor: formData.imageColor,
-      gallery: formData.gallery
+      gallery: formData.gallery,
+      specs: formData.specs.split('\n').filter(s => s.trim() !== '')
     });
 
     setIsEditOpen(false);
@@ -184,7 +187,8 @@ export default function Dashboard() {
       collection: product.collection,
       image: product.image,
       imageColor: product.imageColor || product.image,
-      gallery: product.gallery || []
+      gallery: product.gallery || [],
+      specs: product.specs ? product.specs.join('\n') : ''
     });
     setIsEditOpen(true);
   };
@@ -198,7 +202,8 @@ export default function Dashboard() {
       collection: '',
       image: '',
       imageColor: '',
-      gallery: []
+      gallery: [],
+      specs: ''
     });
   };
 
@@ -450,6 +455,20 @@ export default function Dashboard() {
                     <div className="grid gap-2">
                       <Label htmlFor="price">Preço (R$)</Label>
                       <Input id="price" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-none" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="description">Descrição</Label>
+                      <Textarea id="description" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="rounded-none" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="specs">Especificações Técnicas (uma por linha)</Label>
+                      <Textarea 
+                        id="specs" 
+                        value={formData.specs} 
+                        onChange={(e) => setFormData({...formData, specs: e.target.value})} 
+                        className="rounded-none h-24" 
+                        placeholder="Material: Ouro 18K&#10;Peso: 5g&#10;Gema: Diamante"
+                      />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="category">Categoria</Label>
