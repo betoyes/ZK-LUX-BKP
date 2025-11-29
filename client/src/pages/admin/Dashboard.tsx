@@ -54,7 +54,8 @@ export default function Dashboard() {
     category: '',
     collection: '',
     image: '',
-    imageColor: ''
+    imageColor: '',
+    gallery: [] as string[]
   });
 
   const [catFormData, setCatFormData] = useState({ name: '', description: '' });
@@ -71,6 +72,26 @@ export default function Dashboard() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, gallery: [...prev.gallery, reader.result as string] }));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      gallery: prev.gallery.filter((_, i) => i !== index)
+    }));
   };
   
   // Helper for collection/category product selection
@@ -117,6 +138,7 @@ export default function Dashboard() {
       collection: formData.collection || 'eternal',
       image: formData.image || getMockImage(formData.category),
       imageColor: formData.imageColor || formData.image || getMockImage(formData.category),
+      gallery: formData.gallery,
       isNew: true
     });
 
@@ -135,7 +157,8 @@ export default function Dashboard() {
       category: formData.category,
       collection: formData.collection,
       image: formData.image,
-      imageColor: formData.imageColor
+      imageColor: formData.imageColor,
+      gallery: formData.gallery
     });
 
     setIsEditOpen(false);
@@ -160,7 +183,8 @@ export default function Dashboard() {
       category: product.category,
       collection: product.collection,
       image: product.image,
-      imageColor: product.imageColor || product.image
+      imageColor: product.imageColor || product.image,
+      gallery: product.gallery || []
     });
     setIsEditOpen(true);
   };
@@ -173,7 +197,8 @@ export default function Dashboard() {
       category: '',
       collection: '',
       image: '',
-      imageColor: ''
+      imageColor: '',
+      gallery: []
     });
   };
 
@@ -461,16 +486,31 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Imagem (Colorida / Hover)</Label>
+                      <Label>Galeria de Fotos</Label>
                       <div className="flex gap-4 items-center">
                         <Input 
                             type="file" 
                             accept="image/*"
-                            onChange={(e) => handleImageUpload(e, 'imageColor')}
+                            multiple
+                            onChange={handleGalleryUpload}
                             className="rounded-none font-mono text-xs" 
                         />
-                        {formData.imageColor && <div className="h-10 w-10 bg-secondary"><img src={formData.imageColor} className="h-full w-full object-cover" /></div>}
                       </div>
+                      {formData.gallery.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2 mt-2">
+                          {formData.gallery.map((img, idx) => (
+                            <div key={idx} className="relative group h-16 w-16 bg-secondary">
+                              <img src={img} className="h-full w-full object-cover" />
+                              <button 
+                                onClick={() => removeGalleryImage(idx)}
+                                className="absolute top-0 right-0 bg-red-500 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <DialogFooter>
@@ -576,16 +616,31 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Imagem (Colorida / Hover)</Label>
+                      <Label>Galeria de Fotos</Label>
                       <div className="flex gap-4 items-center">
                         <Input 
                             type="file" 
                             accept="image/*"
-                            onChange={(e) => handleImageUpload(e, 'imageColor')}
+                            multiple
+                            onChange={handleGalleryUpload}
                             className="rounded-none font-mono text-xs" 
                         />
-                        {formData.imageColor && <div className="h-10 w-10 bg-secondary"><img src={formData.imageColor} className="h-full w-full object-cover" /></div>}
                       </div>
+                      {formData.gallery.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2 mt-2">
+                          {formData.gallery.map((img, idx) => (
+                            <div key={idx} className="relative group h-16 w-16 bg-secondary">
+                              <img src={img} className="h-full w-full object-cover" />
+                              <button 
+                                onClick={() => removeGalleryImage(idx)}
+                                className="absolute top-0 right-0 bg-red-500 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Trash className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                 </div>
                 <DialogFooter>

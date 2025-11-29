@@ -52,12 +52,28 @@ export default function Product() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 mb-32">
           {/* Product Image - Sticky on Desktop */}
           <div className="lg:col-span-7 relative">
-             <div className="sticky top-32 aspect-[3/4] bg-secondary overflow-hidden">
-               <img 
-                src={product.image} 
-                alt={product.name} 
-                className="w-full h-full object-cover grayscale contrast-110"
-              />
+             <div className="sticky top-32 space-y-8">
+               <div className="aspect-[3/4] bg-secondary overflow-hidden">
+                 <img 
+                  src={product.imageColor || product.image} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover"
+                />
+               </div>
+               
+               {product.gallery && product.gallery.length > 0 && (
+                 <div className="grid grid-cols-2 gap-4">
+                   {product.gallery.map((img, idx) => (
+                     <div key={idx} className="aspect-[3/4] bg-secondary overflow-hidden">
+                       <img 
+                        src={img} 
+                        alt={`${product.name} ${idx + 1}`} 
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                      />
+                     </div>
+                   ))}
+                 </div>
+               )}
              </div>
           </div>
 

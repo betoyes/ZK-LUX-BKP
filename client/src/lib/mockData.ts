@@ -10,6 +10,7 @@ export interface Product {
   description: string;
   image: string;
   imageColor?: string;
+  gallery?: string[];
   category: string;
   collection: string;
   isNew?: boolean;
