@@ -35,6 +35,11 @@ export default function Home() {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
+  // Filter and Sort Bestsellers
+  const bestsellers = products
+    .filter(p => p.bestsellerOrder !== undefined && p.bestsellerOrder > 0)
+    .sort((a, b) => (a.bestsellerOrder || 999) - (b.bestsellerOrder || 999));
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
       
@@ -184,7 +189,7 @@ export default function Home() {
 
         <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRef}>
           <div className="flex gap-8 pr-12">
-            {products.slice(0, 8).map((product, idx) => (
+            {(bestsellers.length > 0 ? bestsellers : products.slice(0, 8)).map((product, idx) => (
               <Link key={product.id} href={`/product/${product.id}`} className="shrink-0 w-[300px] md:w-[400px] group cursor-pointer select-none">
                 <div className="aspect-[3/4] bg-secondary overflow-hidden mb-6 relative">
                   <img 

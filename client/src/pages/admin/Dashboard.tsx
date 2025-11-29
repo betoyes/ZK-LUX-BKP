@@ -56,7 +56,8 @@ export default function Dashboard() {
     image: '',
     imageColor: '',
     gallery: [] as string[],
-    specs: ''
+    specs: '',
+    bestsellerOrder: ''
   });
 
   const [catFormData, setCatFormData] = useState({ name: '', description: '' });
@@ -141,6 +142,7 @@ export default function Dashboard() {
       imageColor: formData.imageColor || formData.image || getMockImage(formData.category),
       gallery: formData.gallery,
       specs: formData.specs.split('\n').filter(s => s.trim() !== ''),
+      bestsellerOrder: formData.bestsellerOrder ? Number(formData.bestsellerOrder) : undefined,
       isNew: true
     });
 
@@ -161,7 +163,8 @@ export default function Dashboard() {
       image: formData.image,
       imageColor: formData.imageColor,
       gallery: formData.gallery,
-      specs: formData.specs.split('\n').filter(s => s.trim() !== '')
+      specs: formData.specs.split('\n').filter(s => s.trim() !== ''),
+      bestsellerOrder: formData.bestsellerOrder ? Number(formData.bestsellerOrder) : undefined
     });
 
     setIsEditOpen(false);
@@ -188,7 +191,8 @@ export default function Dashboard() {
       image: product.image,
       imageColor: product.imageColor || product.image,
       gallery: product.gallery || [],
-      specs: product.specs ? product.specs.join('\n') : ''
+      specs: product.specs ? product.specs.join('\n') : '',
+      bestsellerOrder: product.bestsellerOrder ? product.bestsellerOrder.toString() : ''
     });
     setIsEditOpen(true);
   };
@@ -203,7 +207,8 @@ export default function Dashboard() {
       image: '',
       imageColor: '',
       gallery: [],
-      specs: ''
+      specs: '',
+      bestsellerOrder: ''
     });
   };
 
@@ -455,6 +460,10 @@ export default function Dashboard() {
                     <div className="grid gap-2">
                       <Label htmlFor="price">Preço (R$)</Label>
                       <Input id="price" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-none" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="bestsellerOrder">Ordem no Bestsellers (Deixe vazio para ocultar)</Label>
+                      <Input id="bestsellerOrder" type="number" placeholder="Ex: 1, 2, 3..." value={formData.bestsellerOrder} onChange={(e) => setFormData({...formData, bestsellerOrder: e.target.value})} className="rounded-none" />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="description">Descrição</Label>

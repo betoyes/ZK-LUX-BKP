@@ -14,6 +14,7 @@ export interface Product {
   category: string;
   collection: string;
   specs?: string[];
+  bestsellerOrder?: number;
   isNew?: boolean;
 }
 
