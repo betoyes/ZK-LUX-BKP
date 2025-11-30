@@ -4,13 +4,15 @@ import { api } from '@/lib/api';
 interface User {
   id: number;
   username: string;
+  role: 'admin' | 'customer';
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  isAdmin: boolean;
+  login: (username: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -20,7 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check auth status on mount
   useEffect(() => {
     checkAuth();
   }, []);
@@ -28,8 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       const data = await api.auth.me();
-      if ('id' in data) {
-        setUser(data);
+      if ('id' in data && 'role' in data) {
+        setUser(data as User);
       } else {
         setUser(null);
       }
@@ -40,9 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<User> => {
     const data = await api.auth.login(username, password);
-    setUser(data);
+    const userData = data as User;
+    setUser(userData);
+    return userData;
   };
 
   const logout = async () => {
@@ -56,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isAdmin: user?.role === 'admin',
         login,
         logout,
       }}

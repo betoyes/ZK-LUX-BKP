@@ -4,14 +4,17 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
-// Users table (admin authentication)
+// Users table (authentication for both admin and customers)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").notNull().default('customer'), // 'admin' | 'customer'
+  emailVerified: boolean("email_verified").default(false),
+  createdAt: text("created_at"),
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, emailVerified: true, createdAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 

@@ -19,6 +19,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getAdminUsers(): Promise<User[]>;
+  deleteUser(id: number): Promise<void>;
 
   // Categories
   getCategories(): Promise<Category[]>;
@@ -93,8 +95,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const [user] = await db.insert(users).values({
+      ...insertUser,
+      createdAt: new Date().toISOString(),
+    }).returning();
     return user;
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, 'admin'));
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   // Categories

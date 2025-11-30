@@ -1,12 +1,33 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { Package, Heart, LogOut, User, MapPin, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Account() {
   const [activeTab, setActiveTab] = useState("orders");
+  const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Até logo!",
+        description: "Você foi desconectado com sucesso.",
+      });
+      setLocation('/login');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível desconectar.",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pt-32 pb-24">
@@ -15,14 +36,17 @@ export default function Account() {
           <div>
             <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tighter mb-2">Minha Conta</h1>
             <p className="font-mono text-sm text-muted-foreground uppercase tracking-widest">
-              Bem-vindo de volta, Cliente VIP.
+              Bem-vindo de volta{user?.username ? `, ${user.username}` : ''}.
             </p>
           </div>
-          <Link href="/login">
-            <Button variant="outline" className="rounded-none border-black hover:bg-black hover:text-white font-mono text-xs uppercase tracking-widest mt-4 md:mt-0 flex items-center gap-2">
-              <LogOut className="h-3 w-3" /> Sair
-            </Button>
-          </Link>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            className="rounded-none border-black hover:bg-black hover:text-white font-mono text-xs uppercase tracking-widest mt-4 md:mt-0 flex items-center gap-2"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-3 w-3" /> Sair
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
@@ -32,18 +56,21 @@ export default function Account() {
                <button 
                  onClick={() => setActiveTab("orders")}
                  className={`text-left px-4 py-3 font-mono text-xs uppercase tracking-widest border-l-2 transition-all ${activeTab === "orders" ? "border-black bg-secondary/50" : "border-transparent hover:bg-secondary/30"}`}
+                 data-testid="tab-orders"
                >
                  Meus Pedidos
                </button>
                <button 
                  onClick={() => setActiveTab("profile")}
                  className={`text-left px-4 py-3 font-mono text-xs uppercase tracking-widest border-l-2 transition-all ${activeTab === "profile" ? "border-black bg-secondary/50" : "border-transparent hover:bg-secondary/30"}`}
+                 data-testid="tab-profile"
                >
                  Perfil
                </button>
                <button 
                  onClick={() => setActiveTab("wishlist")}
                  className={`text-left px-4 py-3 font-mono text-xs uppercase tracking-widest border-l-2 transition-all ${activeTab === "wishlist" ? "border-black bg-secondary/50" : "border-transparent hover:bg-secondary/30"}`}
+                 data-testid="tab-wishlist"
                >
                  Lista de Desejos
                </button>
@@ -95,16 +122,10 @@ export default function Account() {
                     <h2 className="font-display text-3xl mb-8">Dados Pessoais</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-2">
-                        <label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Nome Completo</label>
-                        <div className="border-b border-border py-2 font-display text-xl">Cliente VIP</div>
-                      </div>
-                      <div className="space-y-2">
                         <label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Email</label>
-                        <div className="border-b border-border py-2 font-display text-xl">cliente@aurum.com</div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Telefone</label>
-                        <div className="border-b border-border py-2 font-display text-xl">+55 11 99999-9999</div>
+                        <div className="border-b border-border py-2 font-display text-xl" data-testid="text-user-email">
+                          {user?.username || 'Não informado'}
+                        </div>
                       </div>
                     </div>
                   </div>

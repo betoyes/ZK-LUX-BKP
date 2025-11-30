@@ -19,6 +19,7 @@ declare global {
     interface User {
       id: number;
       username: string;
+      role: string;
     }
   }
 }
@@ -29,6 +30,14 @@ function requireAuth(req: any, res: any, next: any) {
     return next();
   }
   res.status(401).json({ message: "Não autenticado" });
+}
+
+// Admin-only middleware
+function requireAdmin(req: any, res: any, next: any) {
+  if (req.isAuthenticated() && req.user?.role === 'admin') {
+    return next();
+  }
+  res.status(403).json({ message: "Acesso negado. Apenas administradores." });
 }
 
 export async function registerRoutes(
@@ -67,7 +76,7 @@ export async function registerRoutes(
           return done(null, false, { message: "Senha incorreta" });
         }
         
-        return done(null, { id: user.id, username: user.username });
+        return done(null, { id: user.id, username: user.username, role: user.role });
       } catch (err) {
         return done(err);
       }
@@ -84,7 +93,7 @@ export async function registerRoutes(
       if (!user) {
         return done(null, false);
       }
-      done(null, { id: user.id, username: user.username });
+      done(null, { id: user.id, username: user.username, role: user.role });
     } catch (err) {
       done(err);
     }
@@ -136,6 +145,7 @@ export async function registerRoutes(
         return res.json({
           id: user.id,
           username: user.username,
+          role: user.role,
         });
       });
     })(req, res, next);
@@ -151,9 +161,84 @@ export async function registerRoutes(
   // Check auth status
   app.get("/api/auth/me", (req, res) => {
     if (req.isAuthenticated()) {
-      res.json(req.user);
+      res.json({
+        id: req.user!.id,
+        username: req.user!.username,
+        role: req.user!.role,
+      });
     } else {
       res.status(401).json({ message: "Não autenticado" });
+    }
+  });
+
+  // ============ ADMIN MANAGEMENT ROUTES ============
+  const PRIMARY_ADMIN_EMAIL = "betoyes@gmail.com";
+
+  // Get all admins (only primary admin can access)
+  app.get("/api/admin/users", requireAdmin, async (req, res, next) => {
+    try {
+      if (req.user?.username !== PRIMARY_ADMIN_EMAIL) {
+        return res.status(403).json({ message: "Apenas o administrador principal pode gerenciar outros administradores." });
+      }
+      const admins = await storage.getAdminUsers();
+      res.json(admins.map(u => ({ id: u.id, username: u.username, role: u.role, createdAt: u.createdAt })));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Add new admin (only primary admin can do this)
+  app.post("/api/admin/users", requireAdmin, async (req, res, next) => {
+    try {
+      if (req.user?.username !== PRIMARY_ADMIN_EMAIL) {
+        return res.status(403).json({ message: "Apenas o administrador principal pode adicionar administradores." });
+      }
+      
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: "Email e senha são obrigatórios" });
+      }
+      
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Este email já está em uso" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        role: 'admin',
+      });
+      
+      res.status(201).json({ id: user.id, username: user.username, role: user.role });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Delete admin (only primary admin, cannot delete self)
+  app.delete("/api/admin/users/:id", requireAdmin, async (req, res, next) => {
+    try {
+      if (req.user?.username !== PRIMARY_ADMIN_EMAIL) {
+        return res.status(403).json({ message: "Apenas o administrador principal pode remover administradores." });
+      }
+      
+      const id = parseInt(req.params.id);
+      const userToDelete = await storage.getUser(id);
+      
+      if (!userToDelete) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+      
+      if (userToDelete.username === PRIMARY_ADMIN_EMAIL) {
+        return res.status(403).json({ message: "Não é possível remover o administrador principal" });
+      }
+      
+      await storage.deleteUser(id);
+      res.status(204).send();
+    } catch (err) {
+      next(err);
     }
   });
 
