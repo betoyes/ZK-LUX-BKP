@@ -116,11 +116,11 @@ export default function Home() {
         </motion.div>
         
         {/* Cidades - Lateral direita centralizada */}
-        <div className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 z-40 hidden md:block mix-blend-difference">
-          <div className="flex flex-col items-end gap-3">
-            <span className="font-mono text-[10px] tracking-[0.4em] uppercase text-white/80">São Paulo</span>
-            <span className="font-mono text-[10px] tracking-[0.4em] uppercase text-white/80">Paris</span>
-            <span className="font-mono text-[10px] tracking-[0.4em] uppercase text-white/80">Tóquio</span>
+        <div className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 z-[60] hidden md:block">
+          <div className="flex flex-col items-end gap-2">
+            <span className="font-mono text-[10px] tracking-[0.4em] uppercase text-white">São Paulo</span>
+            <span className="font-mono text-[10px] tracking-[0.4em] uppercase text-white">Paris</span>
+            <span className="font-mono text-[10px] tracking-[0.4em] uppercase text-white">Tóquio</span>
           </div>
         </div>
         
@@ -138,9 +138,11 @@ export default function Home() {
                 </span>
               ))}
             </h1>
-            <p className="font-mono text-sm md:text-base tracking-[0.2em] uppercase opacity-100 font-light">
-              {branding.heroSubtitle}
-            </p>
+            <div className="inline-block bg-neutral-800/80 px-4 py-2">
+              <p className="font-mono text-sm md:text-base tracking-[0.2em] uppercase text-white font-light" style={{ mixBlendMode: 'normal' }}>
+                {branding.heroSubtitle}
+              </p>
+            </div>
           </div>
 
           <div className="flex justify-between items-end pointer-events-auto">
