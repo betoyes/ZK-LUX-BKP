@@ -13,7 +13,7 @@ import {
   insertCustomerSchema, insertOrderSchema, insertBrandingSchema,
   type User,
 } from "@shared/schema";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail } from "./email";
 import { validatePassword, isPasswordValid } from "../shared/passwordStrength";
 
 // Extend Express User type
@@ -104,7 +104,7 @@ export async function registerRoutes(
 
   // ============ AUTH ROUTES ============
   
-  // Customer registration endpoint with email verification
+  // Customer registration endpoint
   app.post("/api/auth/register", async (req, res, next) => {
     try {
       const { username, password } = req.body;
@@ -135,26 +135,6 @@ export async function registerRoutes(
         role: 'customer',
       });
 
-      // Create email verification token
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
-      
-      await storage.createEmailVerificationToken({
-        userId: user.id,
-        token: verificationToken,
-        expiresAt,
-        createdAt: new Date().toISOString(),
-      });
-
-      // Send verification email
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      try {
-        await sendVerificationEmail(username, verificationToken, baseUrl);
-      } catch (emailErr) {
-        console.error("Failed to send verification email:", emailErr);
-        // Continue registration even if email fails
-      }
-
       // Auto-subscribe as lead (registered but no purchase yet)
       try {
         await storage.createOrUpdateSubscriber(
@@ -170,85 +150,13 @@ export async function registerRoutes(
         id: user.id,
         username: user.username,
         role: user.role,
-        emailVerified: false,
-        message: "Cadastro realizado! Verifique seu email para confirmar sua conta.",
+        message: "Cadastro realizado com sucesso! Você pode fazer login agora.",
       });
     } catch (err) {
       next(err);
     }
   });
 
-  // Email verification endpoint
-  app.get("/api/auth/verify-email", async (req, res, next) => {
-    try {
-      const { token } = req.query;
-      
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({ message: "Token de verificação inválido" });
-      }
-      
-      const tokenData = await storage.getEmailVerificationToken(token);
-      
-      if (!tokenData) {
-        return res.status(400).json({ message: "Token de verificação inválido ou expirado" });
-      }
-      
-      // Check if token is expired
-      if (new Date(tokenData.expiresAt) < new Date()) {
-        await storage.deleteEmailVerificationTokensByUserId(tokenData.userId);
-        return res.status(400).json({ message: "Token de verificação expirado. Por favor, solicite um novo email de verificação." });
-      }
-      
-      // Verify the email
-      await storage.verifyUserEmail(tokenData.userId);
-      await storage.deleteEmailVerificationTokensByUserId(tokenData.userId);
-      
-      res.json({ message: "Email verificado com sucesso! Você já pode fazer login." });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  // Resend verification email
-  app.post("/api/auth/resend-verification", async (req, res, next) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ message: "Email é obrigatório" });
-      }
-      
-      const user = await storage.getUserByUsername(email);
-      if (!user) {
-        return res.status(404).json({ message: "Usuário não encontrado" });
-      }
-      
-      if (user.emailVerified) {
-        return res.status(400).json({ message: "Email já foi verificado" });
-      }
-      
-      // Delete old tokens
-      await storage.deleteEmailVerificationTokensByUserId(user.id);
-      
-      // Create new verification token
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      
-      await storage.createEmailVerificationToken({
-        userId: user.id,
-        token: verificationToken,
-        expiresAt,
-        createdAt: new Date().toISOString(),
-      });
-      
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      await sendVerificationEmail(email, verificationToken, baseUrl);
-      
-      res.json({ message: "Email de verificação reenviado com sucesso" });
-    } catch (err) {
-      next(err);
-    }
-  });
 
   // Request password reset
   app.post("/api/auth/forgot-password", async (req, res, next) => {
@@ -366,16 +274,6 @@ export async function registerRoutes(
       }
       if (!user) {
         return res.status(401).json({ message: info?.message || "Credenciais inválidas" });
-      }
-      
-      // Check if email is verified (only for customers, admins bypass)
-      const fullUser = await storage.getUser(user.id);
-      if (fullUser && fullUser.role === 'customer' && !fullUser.emailVerified) {
-        return res.status(403).json({ 
-          message: "Por favor, confirme seu email antes de fazer login.",
-          needsVerification: true,
-          email: fullUser.username
-        });
       }
       
       req.logIn(user, (err) => {

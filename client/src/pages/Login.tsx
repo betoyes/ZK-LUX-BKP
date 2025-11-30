@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { ArrowRight, Loader2, Mail } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { PasswordStrengthIndicator, usePasswordValidation } from '@/components/ui/password-strength-indicator';
 import { isPasswordValid } from '@shared/passwordStrength';
 
@@ -32,9 +32,6 @@ const registerSchema = z.object({
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [needsVerification, setNeedsVerification] = useState(false);
-  const [unverifiedEmail, setUnverifiedEmail] = useState("");
-  const [isResending, setIsResending] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, isAuthenticated, isAdmin } = useAuth();
@@ -82,59 +79,19 @@ export default function Login() {
         const data = await response.json();
         toast({
           title: "Conta criada com sucesso!",
-          description: "Verifique seu email para confirmar sua conta antes de fazer login.",
+          description: "Você pode fazer login agora com suas credenciais.",
         });
         setIsLogin(true);
         form.reset({ email: values.email, password: "", confirmPassword: "" });
       }
     } catch (error: any) {
-      // Check if error is about email verification
-      if (error.needsVerification) {
-        setNeedsVerification(true);
-        setUnverifiedEmail(error.email || values.email);
-      } else {
-        toast({
-          variant: "destructive",
-          title: isLogin ? "Falha no Login" : "Erro no Registro",
-          description: error.message || "Credenciais inválidas.",
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const handleResendVerification = async () => {
-    setIsResending(true);
-    try {
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: unverifiedEmail }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Email reenviado!",
-          description: "Verifique sua caixa de entrada e spam.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: data.message,
-        });
-      }
-    } catch (err) {
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível reenviar o email.",
+        title: isLogin ? "Falha no Login" : "Erro no Registro",
+        description: error.message || "Credenciais inválidas.",
       });
     } finally {
-      setIsResending(false);
+      setIsLoading(false);
     }
   }
 
@@ -167,53 +124,8 @@ export default function Login() {
       {/* Form Side */}
       <div className="w-full md:w-1/2 p-8 md:p-24 flex flex-col justify-center bg-background">
         <div className="max-w-sm mx-auto w-full space-y-12">
-          {needsVerification ? (
-            <>
-              <div className="text-center">
-                <Mail className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h1 className="font-display text-4xl mb-2">Verifique seu Email</h1>
-                <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest mb-4">
-                  Por favor, confirme seu email antes de fazer login.
-                </p>
-                <p className="text-muted-foreground text-sm mb-6">
-                  Enviamos um link de verificação para <strong>{unverifiedEmail}</strong>
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <Button 
-                  onClick={handleResendVerification}
-                  disabled={isResending}
-                  className="w-full rounded-none h-12 bg-black text-white hover:bg-black/80 uppercase tracking-widest font-mono text-xs"
-                  data-testid="button-resend-verification"
-                >
-                  {isResending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Reenviando...
-                    </>
-                  ) : (
-                    "Reenviar Email de Verificação"
-                  )}
-                </Button>
-                
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setNeedsVerification(false);
-                    setUnverifiedEmail("");
-                    form.reset();
-                  }}
-                  className="w-full rounded-none h-12 uppercase tracking-widest font-mono text-xs"
-                  data-testid="button-back-to-login"
-                >
-                  Voltar para Login
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
+          <>
+            <div>
                 <h1 className="font-display text-4xl mb-2">{isLogin ? 'Entrar' : 'Criar Conta'}</h1>
                 <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest">
                   {isLogin ? 'Bem-vindo de volta ao círculo interno.' : 'Junte-se ao ZK REZK Archive.'}
@@ -319,7 +231,6 @@ export default function Login() {
                 </button>
               </div>
             </>
-          )}
         </div>
       </div>
     </div>

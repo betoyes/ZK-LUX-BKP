@@ -87,11 +87,10 @@ export interface IStorage {
   getBranding(): Promise<Branding | undefined>;
   createOrUpdateBranding(branding: InsertBranding): Promise<Branding>;
 
-  // Email Verification Tokens
+  // Email Verification Tokens (kept for backward compatibility, but no longer used)
   createEmailVerificationToken(token: InsertEmailVerificationToken): Promise<EmailVerificationToken>;
   getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
   deleteEmailVerificationTokensByUserId(userId: number): Promise<void>;
-  verifyUserEmail(userId: number): Promise<void>;
 
   // Password Reset Tokens
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -423,9 +422,6 @@ export class DatabaseStorage implements IStorage {
     await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, userId));
   }
 
-  async verifyUserEmail(userId: number): Promise<void> {
-    await db.update(users).set({ emailVerified: true }).where(eq(users.id, userId));
-  }
 
   // Password Reset Tokens
   async createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken> {
