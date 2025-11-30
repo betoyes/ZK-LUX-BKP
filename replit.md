@@ -162,4 +162,28 @@ Preferred communication style: Simple, everyday language.
 ### Notable Third-Party Services
 - **Neon Database**: Serverless Postgres with connection pooling
 - Designed for potential integration with Stripe (dependency present but not implemented)
-- Email service integration prepared (nodemailer dependency present)
+- **Resend**: Email service for transactional emails (verification, password reset, admin notifications)
+
+## Email Automation
+
+**Admin Notifications**
+- Email notifications are sent to betoyes@gmail.com for:
+  - New newsletter subscriptions (`/api/subscribers`)
+  - New user registrations (`/api/auth/register`)
+  - New customer creations (`/api/customers`)
+  - New order placements (`/api/orders`)
+- Notifications are sent asynchronously and don't block the main response
+- Implementation in `server/email.ts` using `sendAdminNotification()` function
+
+**Transactional Emails**
+- Email verification for new customer accounts
+- Password reset links (1-hour expiry)
+- Fallback to onboarding@resend.dev if domain not verified
+
+## Recent Changes (November 2025)
+
+1. **CRUD Persistence Fixed**: ProductContext now calls backend APIs instead of only updating local state
+2. **Type System Fixed**: All CRUD functions properly typed as `Promise<void>`, numeric IDs for categories/collections
+3. **Newsletter Endpoint Fixed**: `/api/subscribers` auto-generates date field
+4. **Email Automation Implemented**: Admin notifications for leads, subscribers, customers, and orders
+5. **Price Formatting**: R$ Brazilian format with conversion to/from INTEGER centavos in database
