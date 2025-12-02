@@ -187,7 +187,7 @@ export default function Home() {
                 {branding.manifestoText}
               </p>
             </div>
-            <Link href="/about" className="group flex items-center gap-2 font-mono text-xs uppercase tracking-widest hover:opacity-50 transition-opacity">
+            <Link href="/manifesto" className="group flex items-center gap-2 font-mono text-xs uppercase tracking-widest hover:opacity-50 transition-opacity">
               Ler Manifesto <ArrowUpRight className="h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             </Link>
           </div>

@@ -1,144 +1,100 @@
 import { motion } from 'framer-motion';
-import { useProducts } from '@/context/ProductContext';
+import claudioImg from '@assets/Claudio-01_1764351367392.png';
 
 export default function Manifesto() {
-  const { branding } = useProducts();
-
   return (
-    <div className="min-h-screen bg-background">
-      <section className="relative h-[70vh] flex items-center justify-center overflow-hidden bg-black">
-        <div className="absolute inset-0">
-          <img 
-            src="https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=1600&q=80" 
-            alt="Manifesto"
-            className="w-full h-full object-cover opacity-40"
-          />
-        </div>
-        <div className="relative z-10 text-center text-white px-6">
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="font-mono text-xs uppercase tracking-[0.3em] mb-6 text-white/70"
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Hero / Manifesto Section */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+        {/* Image Side */}
+        <div className="relative h-[80vh] lg:h-screen order-1 lg:order-2 bg-black overflow-hidden">
+          <motion.div 
+            initial={{ scale: 1.1, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            className="w-full h-full"
           >
-            Nossa Filosofia
-          </motion.p>
-          <motion.h1 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter"
-          >
-            {branding.manifestoTitle || 'Manifesto'}
-          </motion.h1>
-        </div>
-      </section>
-
-      <section className="py-24 md:py-32">
-        <div className="container mx-auto px-6 md:px-12">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="space-y-12"
-            >
-              <p className="font-display text-3xl md:text-4xl lg:text-5xl leading-tight tracking-tight">
-                {branding.manifestoText}
-              </p>
-
-              <div className="w-24 h-px bg-border" />
-
-              <div className="grid md:grid-cols-2 gap-12 text-lg leading-relaxed text-muted-foreground">
-                <div className="space-y-6">
-                  <p>
-                    Nascemos da convicção de que o luxo verdadeiro não precisa gritar. Ele sussurra. 
-                    Ele se revela nos detalhes imperceptíveis, nas proporções perfeitas, no peso 
-                    exato de uma peça bem construída.
-                  </p>
-                  <p>
-                    Cada joia que criamos é uma declaração silenciosa. Uma recusa ao óbvio, 
-                    ao excessivo, ao descartável. Preferimos a permanência à tendência, 
-                    a substância ao espetáculo.
-                  </p>
-                </div>
-                <div className="space-y-6">
-                  <p>
-                    Trabalhamos com materiais de origem ética e rastreável. Nosso ouro é reciclado, 
-                    nossos diamantes são certificados, nossa produção é consciente. Acreditamos que 
-                    a beleza não pode existir às custas do mundo.
-                  </p>
-                  <p>
-                    Para nós, uma joia não é apenas um objeto. É um artefato de memória, 
-                    um marco de momentos, uma herança que atravessa gerações. Por isso, 
-                    construímos para durar. Para significar. Para transcender.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+            <img 
+              src={claudioImg} 
+              alt="Claudio Rezk" 
+              className="w-full h-full object-cover object-top grayscale contrast-125"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent lg:hidden" />
+          </motion.div>
+          
+          <div className="absolute bottom-8 left-8 lg:hidden text-white">
+            <p className="font-mono text-xs uppercase tracking-widest mb-2">O Visionário</p>
+            <h2 className="font-display text-4xl">Claudio Rezk</h2>
           </div>
         </div>
-      </section>
 
-      <section className="py-24 bg-black text-white">
-        <div className="container mx-auto px-6 md:px-12">
+        {/* Content Side */}
+        <div className="order-2 lg:order-1 flex flex-col justify-center p-8 md:p-20 lg:p-32 bg-background relative">
           <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1 }}
-            className="max-w-5xl mx-auto text-center"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <p className="font-display text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-tight">
-              "{branding.impactPhrase || 'A perfeição não é um detalhe. É a única opção.'}"
-            </p>
+            <span className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-8 block">
+              Manifesto
+            </span>
+            
+            <h1 className="font-display text-6xl md:text-8xl font-bold tracking-tighter leading-[0.9] mb-12">
+              A Alma <br/> da Matéria
+            </h1>
+
+            <div className="space-y-8 font-light text-lg md:text-xl leading-relaxed max-w-md text-muted-foreground">
+              <p>
+                "Joias não são apenas adornos. São arquitetura para o corpo, memórias forjadas em metal e luz."
+              </p>
+              <p>
+                Fundada em 1985, a <strong className="text-foreground font-medium">ZK REZK</strong> nasceu de uma obsessão: transcender o tradicional. Sob a direção criativa de Claudio Rezk, unimos a precisão da engenharia com a fluidez da arte contemporânea.
+              </p>
+              <p>
+                Não seguimos tendências. Criamos o futuro da alta joalheria, peça por peça, desafiando os limites do que o ouro e os diamantes podem expressar.
+              </p>
+            </div>
+
+            <div className="mt-20 hidden lg:block">
+              <p className="font-display text-2xl mb-2">Claudio Rezk</p>
+              <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Diretor Criativo & Fundador</p>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      <section className="py-24 md:py-32">
-        <div className="container mx-auto px-6 md:px-12">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
+      {/* Values Grid - Brutalist Style */}
+      <section className="border-t border-border">
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+          {[
+            {
+              title: "Essência",
+              desc: "Minimalismo radical. Removemos o excesso para revelar a verdade do material."
+            },
+            {
+              title: "Mestria",
+              desc: "Artesanato do velho mundo, tecnologia do novo mundo. Precisão absoluta em cada mícron."
+            },
+            {
+              title: "Legado",
+              desc: "Peças criadas não para uma temporada, mas para atravessar gerações."
+            }
+          ].map((item, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="space-y-12"
+              transition={{ delay: i * 0.2 }}
+              className="p-12 md:p-16 hover:bg-secondary/20 transition-colors group"
             >
-              <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
-                Nossos Princípios
-              </h2>
-
-              <div className="grid md:grid-cols-3 gap-8">
-                <div className="space-y-4">
-                  <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">01</div>
-                  <h3 className="font-display text-xl font-semibold">Excelência Silenciosa</h3>
-                  <p className="text-muted-foreground">
-                    A qualidade fala por si. Não precisamos de logos ostensivos ou marketing agressivo. 
-                    Nosso trabalho é nossa assinatura.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">02</div>
-                  <h3 className="font-display text-xl font-semibold">Responsabilidade Total</h3>
-                  <p className="text-muted-foreground">
-                    Da origem do material ao destino final, assumimos responsabilidade por cada etapa. 
-                    Ética não é opcional.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">03</div>
-                  <h3 className="font-display text-xl font-semibold">Atemporalidade</h3>
-                  <p className="text-muted-foreground">
-                    Criamos para gerações, não para temporadas. Cada peça é desenhada para ser tão 
-                    relevante daqui a 50 anos quanto é hoje.
-                  </p>
-                </div>
-              </div>
+              <span className="font-mono text-xs text-muted-foreground mb-8 block">0{i + 1}</span>
+              <h3 className="font-display text-3xl mb-6 group-hover:translate-x-2 transition-transform duration-500">{item.title}</h3>
+              <p className="text-muted-foreground font-light leading-relaxed">
+                {item.desc}
+              </p>
             </motion.div>
-          </div>
+          ))}
         </div>
       </section>
     </div>
