@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useRoute, Link } from 'wouter';
+import { useRoute, Link, useSearch } from 'wouter';
 import { useProducts } from '@/context/ProductContext';
 import { Button } from '@/components/ui/button';
 import { 
@@ -34,11 +34,15 @@ const STONE_TYPES = [
 
 export default function Product() {
   const [match, params] = useRoute('/product/:id');
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const stoneFromUrl = urlParams.get('stone');
+  
   const { products, categories, collections } = useProducts();
   const { toast } = useToast();
   const [mainImage, setMainImage] = useState('');
   const [selectedVersion, setSelectedVersion] = useState(1);
-  const [selectedStoneType, setSelectedStoneType] = useState('natural');
+  const [selectedStoneType, setSelectedStoneType] = useState(stoneFromUrl || 'natural');
 
   const product = match ? products.find(p => p.id === parseInt(params.id)) : null;
   

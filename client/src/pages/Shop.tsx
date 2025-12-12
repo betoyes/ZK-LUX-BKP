@@ -216,7 +216,10 @@ export default function Shop() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-16">
-                {filteredProducts.map((product, idx) => (
+                {filteredProducts.map((product, idx) => {
+                  const stoneType = selectedStoneTypes[product.id] || 'natural';
+                  const productUrl = stoneType !== 'natural' ? `/product/${product.id}?stone=${stoneType}` : `/product/${product.id}`;
+                  return (
                   <motion.div 
                     layout
                     initial={{ opacity: 0, y: 20 }} 
@@ -233,7 +236,7 @@ export default function Shop() {
                       <Heart className={`h-4 w-4 ${wishlist.includes(product.id) ? 'fill-white' : 'fill-none'}`} />
                     </button>
 
-                    <Link href={`/product/${product.id}`}>
+                    <Link href={productUrl}>
                       <div className="relative aspect-[3/4] bg-secondary overflow-hidden mb-6">
                         <img 
                           src={product.image} 
@@ -294,7 +297,8 @@ export default function Shop() {
                       </div>
                     </Link>
                   </motion.div>
-                ))}
+                );
+                })}
               </div>
             )}
           </div>

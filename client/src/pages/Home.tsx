@@ -275,9 +275,12 @@ export default function Home() {
 
         <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRef}>
           <div className="flex gap-8 pr-12">
-            {(bestsellers.length > 0 ? bestsellers : products.slice(0, 8)).map((product, idx) => (
+            {(bestsellers.length > 0 ? bestsellers : products.slice(0, 8)).map((product, idx) => {
+              const stoneType = selectedStoneTypes[product.id] || 'natural';
+              const productUrl = stoneType !== 'natural' ? `/product/${product.id}?stone=${stoneType}` : `/product/${product.id}`;
+              return (
               <div key={product.id} className="shrink-0 w-[300px] md:w-[400px] group select-none">
-                <Link href={`/product/${product.id}`} className="cursor-pointer">
+                <Link href={productUrl} className="cursor-pointer">
                   <div className="aspect-[3/4] bg-secondary overflow-hidden mb-6 relative">
                     <img 
                       src={product.image} 
@@ -296,7 +299,7 @@ export default function Home() {
                 </Link>
                 <div className="flex justify-between items-start border-b border-border pb-2 group-hover:border-black transition-colors">
                   <div>
-                    <Link href={`/product/${product.id}`}>
+                    <Link href={productUrl}>
                       <h3 className="font-display text-xl mb-1 hover:text-primary transition-colors">{product.name}</h3>
                     </Link>
                     <span className="font-mono text-xs text-muted-foreground uppercase">{categories.find(c => c.id === product.categoryId)?.name || ''}</span>
@@ -329,7 +332,8 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
         
