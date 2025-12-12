@@ -23,16 +23,34 @@ export default function Product() {
   const { products, categories, collections } = useProducts();
   const { toast } = useToast();
   const [mainImage, setMainImage] = useState('');
+  const [selectedVersion, setSelectedVersion] = useState(1);
   
   if (!match) return null;
 
   const product = products.find(p => p.id === parseInt(params.id));
+  
+  // Check if product is a ring
+  const isRing = product && (
+    categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anel') ||
+    categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anéis')
+  );
+
+  // Build versions for rings - use main image and gallery images as different versions
+  const ringVersions = product ? [
+    { version: 1, image: product.imageColor || product.image, name: 'Versão 1' },
+    { version: 2, image: product.gallery?.[0] || product.image, name: 'Versão 2' },
+    { version: 3, image: product.gallery?.[1] || product.gallery?.[0] || product.image, name: 'Versão 3' },
+  ] : [];
 
   useEffect(() => {
     if (product) {
-      setMainImage(product.imageColor || product.image);
+      if (isRing && ringVersions[selectedVersion - 1]) {
+        setMainImage(ringVersions[selectedVersion - 1].image);
+      } else {
+        setMainImage(product.imageColor || product.image);
+      }
     }
-  }, [product]);
+  }, [product, selectedVersion]);
 
   if (!product) {
     return (
@@ -120,9 +138,48 @@ export default function Product() {
               <p className="font-mono text-xl">R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
             </div>
 
-            <p className="text-lg leading-relaxed mb-12 text-muted-foreground font-light">
+            <p className="text-lg leading-relaxed mb-8 text-muted-foreground font-light">
               {product.description}
             </p>
+
+            {/* Ring Version Selector - Only for rings */}
+            {isRing && (
+              <div className="mb-10">
+                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4 block">
+                  Escolha sua versão
+                </span>
+                <div className="flex gap-3">
+                  {ringVersions.map((v) => (
+                    <button
+                      key={v.version}
+                      onClick={() => setSelectedVersion(v.version)}
+                      className={`group relative flex-1 border transition-all duration-300 ${
+                        selectedVersion === v.version 
+                          ? 'border-black ring-1 ring-black' 
+                          : 'border-border hover:border-black/50'
+                      }`}
+                    >
+                      <div className="aspect-square overflow-hidden">
+                        <img 
+                          src={v.image} 
+                          alt={v.name}
+                          className={`w-full h-full object-cover transition-all duration-300 ${
+                            selectedVersion === v.version ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
+                          }`}
+                        />
+                      </div>
+                      <div className={`absolute bottom-0 left-0 right-0 py-2 text-center font-mono text-[10px] uppercase tracking-widest transition-all ${
+                        selectedVersion === v.version 
+                          ? 'bg-black text-white' 
+                          : 'bg-white/90 text-muted-foreground group-hover:bg-black/10'
+                      }`}>
+                        {v.name}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-6 mb-16">
               <div className="grid grid-cols-2 gap-4">
@@ -145,8 +202,7 @@ export default function Product() {
               </div>
               
               {/* Ring Size Guide Button - Only for rings */}
-              {categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anel') || 
-               categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anéis') ? (
+              {isRing ? (
                 <Dialog>
                   <DialogTrigger asChild>
                     <button className="w-full flex items-center justify-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors font-mono text-xs uppercase tracking-widest border-b border-border hover:border-foreground">
