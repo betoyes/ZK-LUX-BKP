@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -295,6 +296,9 @@ export default function Product() {
                       <DialogTitle className="font-display text-2xl md:text-3xl tracking-tight">
                         Guia de Medidas para Anéis
                       </DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Tabela de conversão e instruções para medir o tamanho do seu anel
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
                       <p className="text-muted-foreground leading-relaxed">

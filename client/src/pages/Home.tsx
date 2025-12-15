@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowDown, ArrowUpRight, Play, ChevronLeft, ChevronRight, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProducts } from '@/context/ProductContext';
 import heroImage from '@assets/generated_images/luxury_jewelry_hero_image_with_model.png';
@@ -185,6 +185,8 @@ export default function Home() {
                 </button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[800px] p-0 bg-black border-none overflow-hidden aspect-video">
+                <DialogTitle className="sr-only">Vídeo da Campanha</DialogTitle>
+                <DialogDescription className="sr-only">Assista ao vídeo promocional da campanha ZK REZK</DialogDescription>
                 <video 
                   src={campaignVideo} 
                   controls 

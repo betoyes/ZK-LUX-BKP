@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,8 +45,13 @@ export default function Login() {
     },
   });
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation(isAdmin ? '/admin/dashboard' : '/account');
+    }
+  }, [isAuthenticated, isAdmin, setLocation]);
+
   if (isAuthenticated) {
-    setLocation(isAdmin ? '/admin/dashboard' : '/account');
     return null;
   }
 

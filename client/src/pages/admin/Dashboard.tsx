@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -876,6 +876,7 @@ export default function Dashboard() {
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] bg-background border border-border overflow-hidden flex flex-col">
                   <DialogHeader className="flex-shrink-0">
                     <DialogTitle className="font-display text-2xl">Adicionar Produto</DialogTitle>
+                    <DialogDescription className="sr-only">Formulário para adicionar um novo produto ao catálogo</DialogDescription>
                   </DialogHeader>
                   <div className="flex-1 overflow-y-auto pr-2">
                   <div className="grid gap-6 py-4">
@@ -1185,6 +1186,7 @@ export default function Dashboard() {
               <DialogContent className="sm:max-w-[700px] max-h-[90vh] bg-background border border-border overflow-hidden flex flex-col">
                 <DialogHeader className="flex-shrink-0">
                   <DialogTitle className="font-display text-2xl">Editar Produto</DialogTitle>
+                  <DialogDescription className="sr-only">Formulário para editar um produto existente</DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto pr-2">
                 <div className="grid gap-6 py-4">
@@ -1444,6 +1446,7 @@ export default function Dashboard() {
                 <DialogContent className="sm:max-w-[425px] bg-background border border-border">
                   <DialogHeader>
                     <DialogTitle className="font-display text-2xl">Adicionar Categoria</DialogTitle>
+                    <DialogDescription className="sr-only">Formulário para adicionar uma nova categoria</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
@@ -1512,6 +1515,7 @@ export default function Dashboard() {
                 <DialogContent className="sm:max-w-[425px] bg-background border border-border">
                   <DialogHeader>
                     <DialogTitle className="font-display text-2xl">Adicionar Coleção</DialogTitle>
+                    <DialogDescription className="sr-only">Formulário para adicionar uma nova coleção</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
@@ -1637,6 +1641,7 @@ export default function Dashboard() {
                 <DialogContent className="sm:max-w-[600px] bg-background border border-border">
                   <DialogHeader>
                     <DialogTitle className="font-display text-2xl">Adicionar Post</DialogTitle>
+                    <DialogDescription className="sr-only">Formulário para adicionar um novo post ao blog</DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
@@ -1706,6 +1711,7 @@ export default function Dashboard() {
               <DialogContent className="sm:max-w-[600px] bg-background border border-border">
                 <DialogHeader>
                   <DialogTitle className="font-display text-2xl">Editar Post</DialogTitle>
+                  <DialogDescription className="sr-only">Formulário para editar um post existente</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
@@ -1791,6 +1797,7 @@ export default function Dashboard() {
                    <DialogContent className="sm:max-w-[400px] bg-background border border-border">
                      <DialogHeader>
                        <DialogTitle className="font-display text-2xl">Adicionar Assinante</DialogTitle>
+                       <DialogDescription className="sr-only">Formulário para adicionar um novo assinante</DialogDescription>
                      </DialogHeader>
                      <div className="grid gap-4 py-4">
                        <div className="grid gap-2">
@@ -1846,6 +1853,7 @@ export default function Dashboard() {
                    <DialogContent className="sm:max-w-[500px] bg-background border border-border">
                      <DialogHeader>
                        <DialogTitle className="font-display text-2xl">Importar Lista</DialogTitle>
+                       <DialogDescription className="sr-only">Formulário para importar lista de assinantes</DialogDescription>
                      </DialogHeader>
                      <div className="grid gap-4 py-4">
                        <div className="grid gap-2">
@@ -2081,6 +2089,7 @@ export default function Dashboard() {
                   <DialogContent className="sm:max-w-[425px] bg-background border border-border">
                     <DialogHeader>
                       <DialogTitle className="font-display text-2xl">Adicionar Administrador</DialogTitle>
+                      <DialogDescription className="sr-only">Formulário para adicionar um novo administrador</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                       <div className="grid gap-2">
