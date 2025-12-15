@@ -350,7 +350,6 @@ export default function Dashboard() {
     const selectedCollection = collections.find(c => String(c.id) === formData.collection);
 
     const mainImage = formData.image || getMockImage(formData.category);
-    const galleryImages = [formData.version1, formData.version2, formData.version3].filter(Boolean);
 
     addProduct({
       name: formData.name,
@@ -360,7 +359,7 @@ export default function Dashboard() {
       collectionId: selectedCollection ? selectedCollection.id : undefined,
       image: mainImage,
       imageColor: mainImage,
-      gallery: galleryImages,
+      gallery: formData.gallery,
       version1: formData.version1 || undefined,
       version2: formData.version2 || undefined,
       version3: formData.version3 || undefined,
@@ -389,7 +388,6 @@ export default function Dashboard() {
     const selectedCollection = collections.find(c => String(c.id) === formData.collection);
 
     const mainImage = formData.image;
-    const galleryImages = [formData.version1, formData.version2, formData.version3].filter(Boolean);
 
     updateProduct(currentProduct.id, {
       name: formData.name,
@@ -399,7 +397,7 @@ export default function Dashboard() {
       collectionId: selectedCollection ? selectedCollection.id : undefined,
       image: mainImage,
       imageColor: mainImage,
-      gallery: galleryImages,
+      gallery: formData.gallery,
       version1: formData.version1 || undefined,
       version2: formData.version2 || undefined,
       version3: formData.version3 || undefined,
