@@ -47,18 +47,24 @@ export default function Product() {
 
   const product = match ? products.find(p => p.id === parseInt(params.id)) : null;
   
-  // Check if product is a ring
+  // Check if product is a ring (for ring-specific features like stone type and size guide)
   const isRing = product && (
     categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anel') ||
     categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anéis')
   );
 
-  // Build versions for rings - use version1, version2, version3 fields
-  const ringVersions = product ? [
+  // Build versions for all products - use version1, version2, version3 fields
+  const productVersions = product ? [
     { version: 1, image: (product as any).version1 || product.imageColor || product.image, name: 'Versão 1' },
     { version: 2, image: (product as any).version2 || (product.gallery as any)?.[0] || product.image, name: 'Versão 2' },
     { version: 3, image: (product as any).version3 || (product.gallery as any)?.[1] || product.image, name: 'Versão 3' },
   ] : [];
+  
+  // Check if product has versions or videos (show version selector for all products)
+  const hasVersionsOrMedia = product && (
+    (product as any).version1 || (product as any).version2 || (product as any).version3 ||
+    (product as any).video || (product as any).video2
+  );
 
   // Get current price based on stone type
   const getCurrentPrice = () => {
@@ -106,8 +112,8 @@ export default function Product() {
   // Separate effect for version changes (only when user clicks a version)
   const handleVersionChange = (version: number) => {
     setSelectedVersion(version);
-    if (ringVersions[version - 1]) {
-      setMainImage(ringVersions[version - 1].image);
+    if (productVersions[version - 1]) {
+      setMainImage(productVersions[version - 1].image);
     }
   };
 
@@ -241,16 +247,15 @@ export default function Product() {
               </div>
             )}
 
-            {/* Ring Version Selector - Only for rings */}
-            {isRing && (
-              <div className="mb-10">
-                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4 block">
-                  Escolha sua versão
-                </span>
-                
-                {/* Row 1: 3 Version Photos */}
-                <div className="grid grid-cols-3 gap-3 mb-3">
-                  {ringVersions.map((v) => (
+            {/* Version Selector - For all products */}
+            <div className="mb-10">
+              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4 block">
+                Escolha sua versão
+              </span>
+              
+              {/* Row 1: 3 Version Photos */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                {productVersions.map((v) => (
                     <button
                       key={v.version}
                       onClick={() => handleVersionChange(v.version)}
@@ -277,13 +282,13 @@ export default function Product() {
                         {v.name}
                       </div>
                     </button>
-                  ))}
-                </div>
-                
-                {/* Row 2: Main Photo + 2 Videos */}
-                <div className="grid grid-cols-3 gap-3">
-                  {/* Main Photo */}
-                  <button
+                ))}
+              </div>
+              
+              {/* Row 2: Main Photo + 2 Videos */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* Main Photo */}
+                <button
                     onClick={() => setMainImage(product.image)}
                     className={`group relative border transition-all duration-300 ${
                       mainImage === product.image 
@@ -386,9 +391,8 @@ export default function Product() {
                       <span className="text-muted-foreground text-xs">Sem vídeo</span>
                     </div>
                   )}
-                </div>
               </div>
-            )}
+            </div>
 
             <div className="space-y-6 mb-16">
               <div className="grid grid-cols-2 gap-4">
