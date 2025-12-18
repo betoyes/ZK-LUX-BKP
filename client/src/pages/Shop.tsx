@@ -29,10 +29,9 @@ export default function Shop() {
   const [sortOption, setSortOption] = useState('newest');
   const [selectedStoneTypes, setSelectedStoneTypes] = useState<Record<number, string>>({});
 
-  // Helper to check if a product is a ring
-  const isRingProduct = (product: any) => {
-    const cat = categories.find(c => c.id === product.categoryId);
-    return cat?.name?.toLowerCase().includes('anel') || cat?.name?.toLowerCase().includes('anéis');
+  // Helper to check if a product has stone variations
+  const hasStoneVariations = (product: any) => {
+    return product.priceDiamondSynthetic || product.priceZirconia;
   };
 
   // Get price based on selected stone type
@@ -256,7 +255,7 @@ export default function Shop() {
                         
                         {/* Hover Overlay - Stone Type Dropdown for Rings, Button for Others */}
                         <div className="absolute bottom-0 left-0 w-full p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                           {isRingProduct(product) ? (
+                           {hasStoneVariations(product) ? (
                              <div 
                                className="bg-white/10 backdrop-blur-md border border-white/20 text-white"
                                onClick={(e) => e.preventDefault()}

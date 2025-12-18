@@ -47,10 +47,9 @@ export default function Product() {
 
   const product = match ? products.find(p => p.id === parseInt(params.id)) : null;
   
-  // Check if product is a ring (for ring-specific features like stone type and size guide)
-  const isRing = product && (
-    categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anel') ||
-    categories.find(c => c.id === product.categoryId)?.name?.toLowerCase().includes('anéis')
+  // Check if product has stone variations (for stone type selector and price changes)
+  const hasStoneVariations = product && (
+    (product as any).priceDiamondSynthetic || (product as any).priceZirconia
   );
 
   // Build versions for all products - use version1, version2, version3 fields
@@ -188,15 +187,15 @@ export default function Product() {
                 </span>
               </div>
               <h1 className="font-display text-5xl md:text-6xl font-medium tracking-tight mb-6 leading-none">{product.name}</h1>
-              <p className="font-mono text-xl">R$ {((isRing ? getCurrentPrice() : product.price) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <p className="font-mono text-xl">R$ {((hasStoneVariations ? getCurrentPrice() : product.price) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
             </div>
 
             <p className="text-lg leading-relaxed mb-8 text-muted-foreground font-light">
-              {isRing ? getCurrentDescription() : product.description}
+              {hasStoneVariations ? getCurrentDescription() : product.description}
             </p>
 
             {/* Stone Type Selector - Only for rings */}
-            {isRing && (
+            {hasStoneVariations && (
               <div className="mb-8">
                 <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-3 block flex items-center gap-2">
                   <Gem className="h-3 w-3" /> Tipo de Pedra
@@ -390,7 +389,7 @@ export default function Product() {
               </div>
               
               {/* Ring Size Guide Button - Only for rings */}
-              {isRing ? (
+              {hasStoneVariations ? (
                 <Dialog>
                   <DialogTrigger asChild>
                     <button className="w-full flex items-center justify-center gap-2 py-3 text-muted-foreground hover:text-foreground transition-colors font-mono text-xs uppercase tracking-widest border-b border-border hover:border-foreground">
@@ -485,8 +484,8 @@ export default function Product() {
                   <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">Especificações Técnicas</AccordionTrigger>
                   <AccordionContent className="text-muted-foreground font-light pb-6">
                     <ul className="space-y-2">
-                      {(isRing ? getCurrentSpecs() : ((product.specs as string[]) || [])).length > 0 ? (
-                        (isRing ? getCurrentSpecs() : ((product.specs as string[]) || [])).map((spec: string, idx: number) => (
+                      {(hasStoneVariations ? getCurrentSpecs() : ((product.specs as string[]) || [])).length > 0 ? (
+                        (hasStoneVariations ? getCurrentSpecs() : ((product.specs as string[]) || [])).map((spec: string, idx: number) => (
                           <li key={idx}>{spec}</li>
                         ))
                       ) : (
