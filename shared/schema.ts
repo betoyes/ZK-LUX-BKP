@@ -61,13 +61,15 @@ export const products = pgTable("products", {
   specs: text("specs").array(), // Specifications array
   bestsellerOrder: integer("bestseller_order"), // Order in bestseller carousel (null = hidden)
   isNew: boolean("is_new").default(false),
-  // Stone type variants (for rings)
-  priceDiamondSynthetic: integer("price_diamond_synthetic"), // Diamante Sintético price
-  priceZirconia: integer("price_zirconia"), // Zircônia price
-  descriptionDiamondSynthetic: text("description_diamond_synthetic"), // Diamante Sintético description
-  descriptionZirconia: text("description_zirconia"), // Zircônia description
-  specsDiamondSynthetic: text("specs_diamond_synthetic").array(), // Diamante Sintético specs
-  specsZirconia: text("specs_zirconia").array(), // Zircônia specs
+  // Stone type variants (legacy fields kept for backward compatibility)
+  priceDiamondSynthetic: integer("price_diamond_synthetic"),
+  priceZirconia: integer("price_zirconia"),
+  descriptionDiamondSynthetic: text("description_diamond_synthetic"),
+  descriptionZirconia: text("description_zirconia"),
+  specsDiamondSynthetic: text("specs_diamond_synthetic").array(),
+  specsZirconia: text("specs_zirconia").array(),
+  // Dynamic stone variations - JSON array of {name, price, description}
+  stoneVariations: text("stone_variations"), // JSON string: [{name: "Diamante Natural", price: 10000, description: "..."}]
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });
