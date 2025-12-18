@@ -959,30 +959,28 @@ export default function Dashboard() {
                           <Input id="bestsellerOrder" type="number" placeholder="Deixe vazio para ocultar" value={formData.bestsellerOrder} onChange={(e) => setFormData({...formData, bestsellerOrder: e.target.value})} className="rounded-none" />
                         </div>
                         
-                        {/* Stone Type Variants - only for rings */}
-                        {isRingCategory() && (
-                          <div className="border-t border-border pt-4 mt-4">
-                            <h3 className="font-mono text-xs uppercase tracking-widest text-primary mb-4">Tipos de Pedra</h3>
+                        {/* Stone Type Variants - for all products */}
+                        <div className="border-t border-border pt-4 mt-4">
+                          <h3 className="font-mono text-xs uppercase tracking-widest text-primary mb-4">Variações de Pedra (Opcional)</h3>
+                          
+                          <div className="space-y-4">
+                            <div className="p-3 bg-secondary/30 border border-border">
+                              <Label className="font-mono text-xs uppercase">Diamante Sintético</Label>
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <Input type="text" placeholder="Preço R$" value={formData.priceDiamondSynthetic} onChange={(e) => setFormData({...formData, priceDiamondSynthetic: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
+                              </div>
+                              <Textarea placeholder="Descrição..." value={formData.descriptionDiamondSynthetic} onChange={(e) => setFormData({...formData, descriptionDiamondSynthetic: e.target.value})} className="rounded-none h-16 mt-2" />
+                            </div>
                             
-                            <div className="space-y-4">
-                              <div className="p-3 bg-secondary/30 border border-border">
-                                <Label className="font-mono text-xs uppercase">Diamante Sintético</Label>
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                  <Input type="text" placeholder="Preço R$" value={formData.priceDiamondSynthetic} onChange={(e) => setFormData({...formData, priceDiamondSynthetic: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
-                                </div>
-                                <Textarea placeholder="Descrição..." value={formData.descriptionDiamondSynthetic} onChange={(e) => setFormData({...formData, descriptionDiamondSynthetic: e.target.value})} className="rounded-none h-16 mt-2" />
+                            <div className="p-3 bg-secondary/30 border border-border">
+                              <Label className="font-mono text-xs uppercase">Zircônia</Label>
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <Input type="text" placeholder="Preço R$" value={formData.priceZirconia} onChange={(e) => setFormData({...formData, priceZirconia: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
                               </div>
-                              
-                              <div className="p-3 bg-secondary/30 border border-border">
-                                <Label className="font-mono text-xs uppercase">Zircônia</Label>
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                  <Input type="text" placeholder="Preço R$" value={formData.priceZirconia} onChange={(e) => setFormData({...formData, priceZirconia: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
-                                </div>
-                                <Textarea placeholder="Descrição..." value={formData.descriptionZirconia} onChange={(e) => setFormData({...formData, descriptionZirconia: e.target.value})} className="rounded-none h-16 mt-2" />
-                              </div>
+                              <Textarea placeholder="Descrição..." value={formData.descriptionZirconia} onChange={(e) => setFormData({...formData, descriptionZirconia: e.target.value})} className="rounded-none h-16 mt-2" />
                             </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                       
                       {/* RIGHT COLUMN - Media */}
@@ -1271,30 +1269,28 @@ export default function Dashboard() {
                         <Input id="edit-bestsellerOrder" type="number" placeholder="Deixe vazio para ocultar" value={formData.bestsellerOrder} onChange={(e) => setFormData({...formData, bestsellerOrder: e.target.value})} className="rounded-none" />
                       </div>
                       
-                      {/* Stone Type Variants - only for rings */}
-                      {isRingCategory() && (
-                        <div className="border-t border-border pt-4 mt-4">
-                          <h3 className="font-mono text-xs uppercase tracking-widest text-primary mb-4">Tipos de Pedra</h3>
+                      {/* Stone Type Variants - for all products */}
+                      <div className="border-t border-border pt-4 mt-4">
+                        <h3 className="font-mono text-xs uppercase tracking-widest text-primary mb-4">Variações de Pedra (Opcional)</h3>
+                        
+                        <div className="space-y-4">
+                          <div className="p-3 bg-secondary/30 border border-border">
+                            <Label className="font-mono text-xs uppercase">Diamante Sintético</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <Input type="text" placeholder="Preço R$" value={formData.priceDiamondSynthetic} onChange={(e) => setFormData({...formData, priceDiamondSynthetic: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
+                            </div>
+                            <Textarea placeholder="Descrição..." value={formData.descriptionDiamondSynthetic} onChange={(e) => setFormData({...formData, descriptionDiamondSynthetic: e.target.value})} className="rounded-none h-16 mt-2" />
+                          </div>
                           
-                          <div className="space-y-4">
-                            <div className="p-3 bg-secondary/30 border border-border">
-                              <Label className="font-mono text-xs uppercase">Diamante Sintético</Label>
-                              <div className="grid grid-cols-2 gap-2 mt-2">
-                                <Input type="text" placeholder="Preço R$" value={formData.priceDiamondSynthetic} onChange={(e) => setFormData({...formData, priceDiamondSynthetic: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
-                              </div>
-                              <Textarea placeholder="Descrição..." value={formData.descriptionDiamondSynthetic} onChange={(e) => setFormData({...formData, descriptionDiamondSynthetic: e.target.value})} className="rounded-none h-16 mt-2" />
+                          <div className="p-3 bg-secondary/30 border border-border">
+                            <Label className="font-mono text-xs uppercase">Zircônia</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <Input type="text" placeholder="Preço R$" value={formData.priceZirconia} onChange={(e) => setFormData({...formData, priceZirconia: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
                             </div>
-                            
-                            <div className="p-3 bg-secondary/30 border border-border">
-                              <Label className="font-mono text-xs uppercase">Zircônia</Label>
-                              <div className="grid grid-cols-2 gap-2 mt-2">
-                                <Input type="text" placeholder="Preço R$" value={formData.priceZirconia} onChange={(e) => setFormData({...formData, priceZirconia: e.target.value.replace(/[^\d,]/g, '')})} className="rounded-none text-sm" />
-                              </div>
-                              <Textarea placeholder="Descrição..." value={formData.descriptionZirconia} onChange={(e) => setFormData({...formData, descriptionZirconia: e.target.value})} className="rounded-none h-16 mt-2" />
-                            </div>
+                            <Textarea placeholder="Descrição..." value={formData.descriptionZirconia} onChange={(e) => setFormData({...formData, descriptionZirconia: e.target.value})} className="rounded-none h-16 mt-2" />
                           </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                     
                     {/* RIGHT COLUMN - Media */}
