@@ -11,6 +11,7 @@ import { ProductProvider } from "@/context/ProductContext";
 import { AuthProvider } from "@/context/AuthContext";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
+import { Redirect } from "wouter";
 import Shop from "@/pages/Shop";
 import Product from "@/pages/Product";
 import Cart from "@/pages/Cart";
@@ -40,6 +41,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
+        <Route path="/register">{() => <Redirect to="/login?mode=register" />}</Route>
         <Route path="/account" component={Account} />
         <Route path="/privacy" component={PrivacyDashboard} />
         <Route path="/verify-email" component={VerifyEmail} />

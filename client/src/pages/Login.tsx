@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { ArrowRight, Loader2 } from 'lucide-react';
@@ -24,13 +25,22 @@ const registerSchema = z.object({
     { message: "A senha não atende aos requisitos de segurança" }
   ),
   confirmPassword: z.string().min(1, "Confirme sua senha"),
+  consentTerms: z.boolean().refine((val) => val === true, {
+    message: "Você deve aceitar os termos de uso"
+  }),
+  consentPrivacy: z.boolean().refine((val) => val === true, {
+    message: "Você deve aceitar a política de privacidade"
+  }),
+  consentMarketing: z.boolean().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "As senhas não conferem",
   path: ["confirmPassword"],
 });
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
+  const searchParams = useSearch();
+  const mode = new URLSearchParams(searchParams).get('mode');
+  const [isLogin, setIsLogin] = useState(mode !== 'register');
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -42,6 +52,9 @@ export default function Login() {
       email: "",
       password: "",
       confirmPassword: "",
+      consentTerms: false,
+      consentPrivacy: false,
+      consentMarketing: false,
     },
   });
 
@@ -73,7 +86,15 @@ export default function Login() {
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: values.email, password: values.password, role: 'customer' }),
+          body: JSON.stringify({ 
+            username: values.email, 
+            email: values.email,
+            password: values.password, 
+            role: 'customer',
+            consentTerms: values.consentTerms,
+            consentPrivacy: values.consentPrivacy,
+            consentMarketing: values.consentMarketing || false,
+          }),
         });
         
         if (!response.ok) {
@@ -84,10 +105,10 @@ export default function Login() {
         const data = await response.json();
         toast({
           title: "Conta criada com sucesso!",
-          description: "Você pode fazer login agora com suas credenciais.",
+          description: data.message || "Verifique seu email para ativar sua conta.",
         });
         setIsLogin(true);
-        form.reset({ email: values.email, password: "", confirmPassword: "" });
+        form.reset({ email: values.email, password: "", confirmPassword: "", consentTerms: false, consentPrivacy: false, consentMarketing: false });
       }
     } catch (error: any) {
       toast({
@@ -181,25 +202,96 @@ export default function Login() {
               />
               
               {!isLogin && (
-                <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-mono text-xs uppercase tracking-widest">Confirmar Senha</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="••••••" 
-                          {...field} 
-                          className="rounded-none border-black h-12 bg-transparent" 
-                          data-testid="input-confirm-password"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <>
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-mono text-xs uppercase tracking-widest">Confirmar Senha</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password" 
+                            placeholder="••••••" 
+                            {...field} 
+                            className="rounded-none border-black h-12 bg-transparent" 
+                            data-testid="input-confirm-password"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="space-y-4 pt-4 border-t border-gray-200">
+                    <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Termos e Consentimentos</p>
+                    
+                    <FormField
+                      control={form.control}
+                      name="consentTerms"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-consent-terms"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm font-normal">
+                              Eu li e aceito os <Link href="/terms-of-use" className="underline hover:text-black">Termos de Uso</Link> *
+                            </FormLabel>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="consentPrivacy"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-consent-privacy"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm font-normal">
+                              Eu li e aceito a <Link href="/privacy-policy" className="underline hover:text-black">Política de Privacidade</Link> *
+                            </FormLabel>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="consentMarketing"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-consent-marketing"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm font-normal">
+                              Desejo receber novidades e ofertas por email (opcional)
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
               )}
 
               {isLogin && (
