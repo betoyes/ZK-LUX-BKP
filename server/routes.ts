@@ -15,7 +15,7 @@ import {
   registerUserSchema, loginUserSchema,
   type User,
 } from "@shared/schema";
-import { sendPasswordResetEmail, sendAdminNotification } from "./email";
+import { sendPasswordResetEmail, sendAdminNotification, sendVerificationEmail } from "./email";
 import { validatePassword, isPasswordValid } from "../shared/passwordStrength";
 
 // Rate limiters for authentication routes
@@ -47,6 +47,14 @@ const resetPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   message: { message: "Muitas tentativas de redefinição de senha. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const resendVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: { message: "Muitas solicitações de reenvio. Tente novamente em 1 hora." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -245,17 +253,125 @@ export async function registerRoutes(
         name: username || email.split('@')[0] 
       }).catch(err => console.error('Failed to send lead notification:', err));
       
+      // Create email verification token and send verification email
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+      
+      await storage.createEmailVerificationToken({
+        userId: user.id,
+        token: verificationToken,
+        expiresAt,
+        createdAt: new Date().toISOString(),
+      });
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      try {
+        await sendVerificationEmail(email, verificationToken, baseUrl);
+      } catch (emailErr) {
+        console.error("Failed to send verification email:", emailErr);
+      }
+      
       res.status(201).json({
         id: user.id,
         username: user.username,
         role: user.role,
-        message: "Cadastro realizado com sucesso! Você pode fazer login agora.",
+        message: "Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.",
       });
     } catch (err) {
       next(err);
     }
   });
 
+  // Verify email
+  app.get("/api/auth/verify-email", async (req: Request, res: Response, next: NextFunction) => {
+    const clientIp = getClientIp(req);
+    const userAgent = getUserAgent(req);
+    
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Token de verificação inválido" });
+      }
+      
+      const tokenData = await storage.getEmailVerificationToken(token);
+      
+      if (!tokenData) {
+        return res.status(400).json({ message: "Token inválido ou já utilizado" });
+      }
+      
+      if (new Date(tokenData.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Token expirado. Solicite um novo email de verificação." });
+      }
+      
+      // Mark user as verified
+      await storage.updateUserEmailVerified(tokenData.userId, true);
+      
+      // Delete the used token
+      await storage.deleteEmailVerificationTokensByUserId(tokenData.userId);
+      
+      // Log audit event
+      await logAuditEvent(tokenData.userId, 'email_verified', clientIp, userAgent);
+      
+      res.json({ message: "Email verificado com sucesso! Você já pode fazer login." });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Resend verification email
+  app.post("/api/auth/resend-verification", resendVerificationLimiter, csrfProtection, async (req: Request, res: Response, next: NextFunction) => {
+    const clientIp = getClientIp(req);
+    const userAgent = getUserAgent(req);
+    
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({ message: "Email válido é obrigatório" });
+      }
+      
+      const user = await storage.getUserByEmail(email) || await storage.getUserByUsername(email);
+      
+      if (!user) {
+        // Return success for security (don't reveal if email exists)
+        return res.json({ message: "Se o email existir em nossa base, você receberá um novo link de verificação." });
+      }
+      
+      if (user.emailVerified) {
+        return res.json({ message: "Este email já foi verificado. Você pode fazer login normalmente." });
+      }
+      
+      // Delete old verification tokens
+      await storage.deleteEmailVerificationTokensByUserId(user.id);
+      
+      // Create new verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+      
+      await storage.createEmailVerificationToken({
+        userId: user.id,
+        token: verificationToken,
+        expiresAt,
+        createdAt: new Date().toISOString(),
+      });
+      
+      // Send verification email
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      try {
+        await sendVerificationEmail(user.email || email, verificationToken, baseUrl);
+      } catch (emailErr) {
+        console.error("Failed to send verification email:", emailErr);
+      }
+      
+      // Log audit event
+      await logAuditEvent(user.id, 'verification_email_resent', clientIp, userAgent);
+      
+      res.json({ message: "Se o email existir em nossa base, você receberá um novo link de verificação." });
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // Request password reset
   app.post("/api/auth/forgot-password", forgotPasswordLimiter, csrfProtection, async (req: Request, res: Response, next: NextFunction) => {
@@ -365,8 +481,8 @@ export async function registerRoutes(
       const hashedPassword = await bcrypt.hash(password, 10);
       await storage.updateUserPassword(tokenData.userId, hashedPassword);
       
-      // Mark token as used
-      await storage.markPasswordResetTokenUsed(tokenData.id);
+      // Invalidate all password reset tokens for this user (marks them as used)
+      await storage.invalidatePasswordResetTokensByUserId(tokenData.userId);
       
       // Log audit event
       await logAuditEvent(tokenData.userId, 'password_reset_complete', clientIp, userAgent);
@@ -411,6 +527,24 @@ export async function registerRoutes(
           { username: req.body.username, reason: info?.message }
         );
         return res.status(401).json({ message: info?.message || "Credenciais inválidas" });
+      }
+      
+      // Check email verification (admins are exempt)
+      if (user.role !== 'admin') {
+        const fullUser = await storage.getUser(user.id);
+        if (fullUser && !fullUser.emailVerified) {
+          await logAuditEvent(
+            user.id,
+            'login_failed',
+            clientIp,
+            userAgent,
+            { reason: 'email_not_verified' }
+          );
+          return res.status(403).json({ 
+            message: "Por favor, verifique seu email antes de fazer login. Verifique sua caixa de entrada.",
+            code: "EMAIL_NOT_VERIFIED"
+          });
+        }
       }
       
       req.logIn(user, async (err) => {

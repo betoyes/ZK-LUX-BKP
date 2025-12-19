@@ -56,7 +56,7 @@ export async function sendVerificationEmail(to: string, token: string, baseUrl: 
     const result = await client.emails.send({
     from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
     to: [to],
-    subject: 'Confirme seu email - ZK REZK',
+    subject: 'Verifique seu email - ZK REZK',
     html: `
       <!DOCTYPE html>
       <html>
@@ -218,7 +218,7 @@ export async function sendPasswordResetEmail(to: string, token: string, baseUrl:
   await client.emails.send({
     from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
     to: [to],
-    subject: 'Redefinir Senha - ZK REZK',
+    subject: 'Recuperação de senha - ZK REZK',
     html: `
       <!DOCTYPE html>
       <html>

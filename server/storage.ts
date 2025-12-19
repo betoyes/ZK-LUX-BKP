@@ -98,7 +98,12 @@ export interface IStorage {
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenUsed(id: number): Promise<void>;
   deletePasswordResetTokensByUserId(userId: number): Promise<void>;
+  invalidatePasswordResetTokensByUserId(userId: number): Promise<void>;
   updateUserPassword(userId: number, hashedPassword: string): Promise<void>;
+
+  // User email verification
+  getUserByEmail(email: string): Promise<User | undefined>;
+  updateUserEmailVerified(userId: number, verified: boolean): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -449,6 +454,23 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
     await db.update(users).set({ password: hashedPassword }).where(eq(users.id, userId));
+  }
+
+  async invalidatePasswordResetTokensByUserId(userId: number): Promise<void> {
+    await db.update(passwordResetTokens).set({ used: true }).where(eq(passwordResetTokens.userId, userId));
+  }
+
+  // User email verification
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async updateUserEmailVerified(userId: number, verified: boolean): Promise<void> {
+    await db.update(users).set({ 
+      emailVerified: verified,
+      emailVerifiedAt: verified ? new Date().toISOString() : null
+    }).where(eq(users.id, userId));
   }
 }
 
