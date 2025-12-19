@@ -1803,19 +1803,6 @@ export default function Dashboard() {
                       <Input value={colFormData.description} onChange={(e) => setColFormData({...colFormData, description: e.target.value})} className="rounded-none" />
                     </div>
 
-                    <div className="grid gap-2">
-                      <Label>Imagem da Coleção</Label>
-                      <div className="flex gap-4 items-center">
-                        <Input 
-                            type="file" 
-                            accept="image/*"
-                            onChange={handleCollectionImageUpload}
-                            className="rounded-none font-mono text-xs" 
-                        />
-                        {colFormData.image && <div className="h-10 w-10 bg-secondary"><img src={colFormData.image} className="h-full w-full object-cover" /></div>}
-                      </div>
-                    </div>
-                    
                     <div className="grid gap-2 mt-4">
                     <Label>Selecionar Produtos</Label>
                     <div className="border border-border p-4 h-48 overflow-y-auto space-y-2">
@@ -1850,27 +1837,20 @@ export default function Dashboard() {
                 return (
                   <div 
                     key={col.id} 
-                    className="border border-border bg-card group relative overflow-hidden cursor-pointer"
+                    className="border border-border p-6 bg-card hover:border-black transition-all group relative cursor-pointer"
                     onClick={() => { setFilterCollectionId(col.id); setFilterCategoryId(null); setActiveTab('products'); }}
                   >
-                     <div className="h-48 bg-secondary/30 overflow-hidden relative">
-                       {col.image ? (
-                         <img src={col.image} alt={col.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
-                       ) : (
-                         <div className="w-full h-full flex items-center justify-center text-muted-foreground font-mono text-xs">Sem imagem</div>
-                       )}
-                       <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 font-mono text-[10px] uppercase tracking-widest">
-                         {productCount} {productCount === 1 ? 'joia' : 'joias'}
-                       </div>
-                     </div>
-                     <div className="p-6 relative z-10 bg-card">
-                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-                          <Button onClick={(e) => { e.stopPropagation(); openEditCollection(col); }} variant="ghost" size="icon" className="h-8 w-8 hover:text-primary hover:bg-transparent"><Pencil className="h-4 w-4" /></Button>
-                          <Button onClick={(e) => { e.stopPropagation(); handleDeleteCollection(col.id); }} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-transparent"><Trash className="h-4 w-4" /></Button>
-                        </div>
-                        <h3 className="font-display text-xl mb-2">{col.name}</h3>
-                        <p className="font-mono text-xs text-muted-foreground">{col.description}</p>
-                     </div>
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+                      <Button onClick={(e) => { e.stopPropagation(); openEditCollection(col); }} variant="ghost" size="icon" className="h-8 w-8 hover:text-primary hover:bg-transparent"><Pencil className="h-4 w-4" /></Button>
+                      <Button onClick={(e) => { e.stopPropagation(); handleDeleteCollection(col.id); }} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-transparent"><Trash className="h-4 w-4" /></Button>
+                    </div>
+                    <LayoutGrid className="h-8 w-8 mb-4 text-muted-foreground" />
+                    <h3 className="font-display text-xl mb-2">{col.name}</h3>
+                    <p className="font-mono text-xs text-muted-foreground">{col.description}</p>
+                    <div className="mt-4 pt-4 border-t border-border font-mono text-[10px] uppercase tracking-widest text-muted-foreground flex justify-between">
+                      <span>ID: {col.id}</span>
+                      <span className="text-foreground">{productCount} {productCount === 1 ? 'joia' : 'joias'}</span>
+                    </div>
                   </div>
                 );
               })}
@@ -1891,23 +1871,6 @@ export default function Dashboard() {
                   <div className="grid gap-2">
                     <Label>Descrição</Label>
                     <Input value={colFormData.description} onChange={(e) => setColFormData({...colFormData, description: e.target.value})} className="rounded-none" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Imagem da Coleção (Capa)</Label>
-                    {colFormData.image && (
-                      <div className="h-32 w-full bg-secondary mb-2 overflow-hidden">
-                        <img src={colFormData.image} className="h-full w-full object-cover" alt="Preview" />
-                      </div>
-                    )}
-                    <div className="flex gap-4 items-center">
-                      <Input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleCollectionImageUpload}
-                        className="rounded-none font-mono text-xs" 
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Selecione uma nova imagem para substituir a atual</p>
                   </div>
                 </div>
                 <DialogFooter>
