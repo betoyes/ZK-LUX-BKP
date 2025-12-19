@@ -16,7 +16,7 @@ import { testimonials } from '@/lib/mockData';
 import img_01 from "@assets/img-01.jpg";
 
 export default function Home() {
-  const { products, categories, collections, branding } = useProducts();
+  const { products, categories, collections, branding, isLoading } = useProducts();
   const { toast } = useToast();
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
@@ -70,6 +70,17 @@ export default function Home() {
   const bestsellers = (Array.isArray(products) ? products : [])
     .filter(p => p.bestsellerOrder !== undefined && p.bestsellerOrder > 0)
     .sort((a, b) => (a.bestsellerOrder || 999) - (b.bestsellerOrder || 999));
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-foreground border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-mono text-sm text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
