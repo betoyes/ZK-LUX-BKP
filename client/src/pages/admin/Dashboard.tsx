@@ -535,10 +535,10 @@ export default function Dashboard() {
       }
       
       const clonedProduct = await response.json();
-      toast({ title: "Sucesso", description: `Produto clonado para Noivas: "${clonedProduct.name}". Edite para alterar a imagem.` });
+      toast({ title: "Sucesso", description: `Produto clonado: "${clonedProduct.name}". Altere a imagem principal abaixo.` });
       
-      // Refresh products list
-      window.location.reload();
+      // Open edit dialog directly with cloned product
+      openEdit(clonedProduct);
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao clonar produto", variant: "destructive" });
     }
