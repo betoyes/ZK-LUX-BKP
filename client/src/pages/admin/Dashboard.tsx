@@ -4,7 +4,7 @@ import { useProducts } from '@/context/ProductContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut, Pencil } from 'lucide-react';
+import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut, Pencil, Copy } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -512,6 +512,35 @@ export default function Dashboard() {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
       deleteProduct(id);
       toast({ title: "Sucesso", description: "Produto removido" });
+    }
+  };
+
+  const handleCloneToNoivas = async (product: any) => {
+    // Check if product is already in Noivas category
+    const noivasCategory = categories.find(c => c.slug === 'noivas' || c.name?.toLowerCase() === 'noivas');
+    if (noivasCategory && product.categoryId === noivasCategory.id) {
+      toast({ title: "Aviso", description: "Este produto já está na categoria Noivas", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/products/${product.id}/clone-noivas`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao clonar produto');
+      }
+      
+      const clonedProduct = await response.json();
+      toast({ title: "Sucesso", description: `Produto clonado para Noivas: "${clonedProduct.name}". Edite para alterar a imagem.` });
+      
+      // Refresh products list
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Erro ao clonar produto", variant: "destructive" });
     }
   };
 
@@ -1367,9 +1396,10 @@ export default function Dashboard() {
                         <TableCell className="font-mono text-xs uppercase tracking-widest">{collections.find(c => c.id === product.collectionId)?.name || '-'}</TableCell>
                         <TableCell className="font-mono text-sm text-right">R$ {(product.price / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button onClick={() => openEdit(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-black hover:bg-transparent"><Edit className="h-4 w-4" /></Button>
-                            <Button onClick={() => handleDelete(product.id)} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-transparent"><Trash className="h-4 w-4" /></Button>
+                          <div className="flex justify-end gap-1">
+                            <Button onClick={() => openEdit(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-black hover:bg-transparent" title="Editar"><Edit className="h-4 w-4" /></Button>
+                            <Button onClick={() => handleCloneToNoivas(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-rose-500 hover:bg-transparent" title="Clonar para Noivas"><Copy className="h-4 w-4" /></Button>
+                            <Button onClick={() => handleDelete(product.id)} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-transparent" title="Excluir"><Trash className="h-4 w-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>

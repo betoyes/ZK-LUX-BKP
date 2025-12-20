@@ -948,6 +948,56 @@ export async function registerRoutes(
     }
   });
 
+  // Clone product to Noivas category
+  app.post("/api/products/:id/clone-noivas", requireAuth, async (req, res, next) => {
+    try {
+      const id = parseInt(req.params.id);
+      const original = await storage.getProductById(id);
+      if (!original) {
+        return res.status(404).json({ message: "Produto não encontrado" });
+      }
+      
+      // Find Noivas category
+      const noivasCategory = await storage.getCategoryBySlug('noivas');
+      if (!noivasCategory) {
+        return res.status(400).json({ message: "Categoria Noivas não encontrada" });
+      }
+      
+      // Clone product with Noivas category
+      const cloneData = {
+        name: `${original.name} - Noivas`,
+        price: original.price,
+        description: original.description,
+        image: original.image,
+        imageColor: original.imageColor,
+        gallery: original.gallery,
+        video: original.video,
+        video2: original.video2,
+        version1: original.version1,
+        version2: original.version2,
+        version3: original.version3,
+        categoryId: noivasCategory.id,
+        collectionId: original.collectionId,
+        specs: original.specs,
+        bestsellerOrder: null,
+        isNew: original.isNew,
+        priceDiamondSynthetic: original.priceDiamondSynthetic,
+        priceZirconia: original.priceZirconia,
+        descriptionDiamondSynthetic: original.descriptionDiamondSynthetic,
+        descriptionZirconia: original.descriptionZirconia,
+        specsDiamondSynthetic: original.specsDiamondSynthetic,
+        specsZirconia: original.specsZirconia,
+        mainStoneName: original.mainStoneName,
+        stoneVariations: original.stoneVariations,
+      };
+      
+      const clonedProduct = await storage.createProduct(cloneData);
+      res.status(201).json(clonedProduct);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.patch("/api/products/:id", requireAuth, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
