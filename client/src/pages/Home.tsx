@@ -252,19 +252,6 @@ export default function Home() {
                       // Get zoom level from product or use default (105 = 1.05 scale)
                       const zoomScale = (product.zoomLevel || 105) / 100;
                       
-                      // Handler for directional zoom (follows cursor)
-                      const handleZoomMove = (e: React.MouseEvent<HTMLImageElement>) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const x = ((e.clientX - rect.left) / rect.width) * 100;
-                        const y = ((e.clientY - rect.top) / rect.height) * 100;
-                        e.currentTarget.style.transform = `scale(${zoomScale})`;
-                        e.currentTarget.style.transformOrigin = `${x}% ${y}%`;
-                      };
-                      const handleZoomOut = (e: React.MouseEvent<HTMLImageElement>) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.transformOrigin = 'center center';
-                      };
-                      
                       if (isNoivas) {
                         return (
                           <img 
@@ -272,9 +259,17 @@ export default function Home() {
                             alt={product.name}
                             loading="lazy"
                             className="w-full h-full object-cover transition-transform duration-300"
-                            style={{ transform: 'scale(1)', transformOrigin: 'center center' }}
-                            onMouseMove={handleZoomMove}
-                            onMouseLeave={handleZoomOut}
+                            onMouseMove={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = ((e.clientX - rect.left) / rect.width) * 100;
+                              const y = ((e.clientY - rect.top) / rect.height) * 100;
+                              e.currentTarget.style.transform = `scale(${zoomScale})`;
+                              e.currentTarget.style.transformOrigin = `${x}% ${y}%`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.transformOrigin = 'center center';
+                            }}
                           />
                         );
                       }
@@ -286,9 +281,17 @@ export default function Home() {
                             alt={product.name}
                             loading="lazy"
                             className={`w-full h-full object-cover transition-transform duration-300 grayscale ${!hasColorImage ? 'group-hover:grayscale-0' : ''}`}
-                            style={{ transform: 'scale(1)', transformOrigin: 'center center' }}
-                            onMouseMove={handleZoomMove}
-                            onMouseLeave={handleZoomOut}
+                            onMouseMove={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = ((e.clientX - rect.left) / rect.width) * 100;
+                              const y = ((e.clientY - rect.top) / rect.height) * 100;
+                              e.currentTarget.style.transform = `scale(${zoomScale})`;
+                              e.currentTarget.style.transformOrigin = `${x}% ${y}%`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.transformOrigin = 'center center';
+                            }}
                           />
                           {hasColorImage && (
                             <img 
@@ -296,9 +299,17 @@ export default function Home() {
                               alt={product.name}
                               loading="lazy"
                               className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 opacity-0 group-hover:opacity-100"
-                              style={{ transform: 'scale(1)', transformOrigin: 'center center' }}
-                              onMouseMove={handleZoomMove}
-                              onMouseLeave={handleZoomOut}
+                              onMouseMove={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                                e.currentTarget.style.transform = `scale(${zoomScale})`;
+                                e.currentTarget.style.transformOrigin = `${x}% ${y}%`;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                                e.currentTarget.style.transformOrigin = 'center center';
+                              }}
                             />
                           )}
                         </>
