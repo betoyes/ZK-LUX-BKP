@@ -222,6 +222,7 @@ export default function Dashboard() {
   
   // State for zoom preview
   const [isPreviewingZoom, setIsPreviewingZoom] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   
   // Add a new stone variation
   const addStoneVariation = () => {
@@ -1375,7 +1376,7 @@ export default function Dashboard() {
                                 <input
                                   type="range"
                                   min="100"
-                                  max="130"
+                                  max="180"
                                   step="5"
                                   value={formData.zoomLevel}
                                   onChange={(e) => setFormData(prev => ({ ...prev, zoomLevel: Number(e.target.value) }))}
@@ -1385,22 +1386,29 @@ export default function Dashboard() {
                                 <span className="font-mono text-sm w-12 text-center">{formData.zoomLevel}%</span>
                               </div>
                               <p className="text-[10px] text-muted-foreground">
-                                100% = sem zoom, 105% = zoom padrão, 130% = zoom máximo
+                                100% = sem zoom, 105% = padrão, 180% = máximo. Zoom segue o cursor.
                               </p>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Preview (passe o mouse)</Label>
+                              <Label className="text-xs">Preview (mova o mouse)</Label>
                               <div 
-                                className="relative aspect-square bg-secondary border border-dashed border-border overflow-hidden group"
-                                onMouseEnter={() => setIsPreviewingZoom(true)}
+                                className="relative aspect-square bg-secondary border border-dashed border-border overflow-hidden"
+                                onMouseMove={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                                  setZoomOrigin({ x, y });
+                                  setIsPreviewingZoom(true);
+                                }}
                                 onMouseLeave={() => setIsPreviewingZoom(false)}
                               >
                                 {formData.image ? (
                                   <img 
                                     src={formData.image} 
-                                    className="h-full w-full object-cover transition-transform duration-500"
+                                    className="h-full w-full object-cover transition-transform duration-300"
                                     style={{ 
-                                      transform: isPreviewingZoom ? `scale(${formData.zoomLevel / 100})` : 'scale(1)'
+                                      transform: isPreviewingZoom ? `scale(${formData.zoomLevel / 100})` : 'scale(1)',
+                                      transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                                     }}
                                   />
                                 ) : (
@@ -1788,7 +1796,7 @@ export default function Dashboard() {
                               <input
                                 type="range"
                                 min="100"
-                                max="130"
+                                max="180"
                                 step="5"
                                 value={formData.zoomLevel}
                                 onChange={(e) => setFormData(prev => ({ ...prev, zoomLevel: Number(e.target.value) }))}
@@ -1798,22 +1806,29 @@ export default function Dashboard() {
                               <span className="font-mono text-sm w-12 text-center">{formData.zoomLevel}%</span>
                             </div>
                             <p className="text-[10px] text-muted-foreground">
-                              100% = sem zoom, 105% = zoom padrão, 130% = zoom máximo
+                              100% = sem zoom, 105% = padrão, 180% = máximo. Zoom segue o cursor.
                             </p>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Preview (passe o mouse)</Label>
+                            <Label className="text-xs">Preview (mova o mouse)</Label>
                             <div 
-                              className="relative aspect-square bg-secondary border border-dashed border-border overflow-hidden group"
-                              onMouseEnter={() => setIsPreviewingZoom(true)}
+                              className="relative aspect-square bg-secondary border border-dashed border-border overflow-hidden"
+                              onMouseMove={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                                setZoomOrigin({ x, y });
+                                setIsPreviewingZoom(true);
+                              }}
                               onMouseLeave={() => setIsPreviewingZoom(false)}
                             >
                               {formData.image ? (
                                 <img 
                                   src={formData.image} 
-                                  className="h-full w-full object-cover transition-transform duration-500"
+                                  className="h-full w-full object-cover transition-transform duration-300"
                                   style={{ 
-                                    transform: isPreviewingZoom ? `scale(${formData.zoomLevel / 100})` : 'scale(1)'
+                                    transform: isPreviewingZoom ? `scale(${formData.zoomLevel / 100})` : 'scale(1)',
+                                    transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
                                   }}
                                 />
                               ) : (
