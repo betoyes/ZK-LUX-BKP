@@ -44,9 +44,13 @@ export default function Product() {
     { version: 3, image: (product as any).version3 || (product.gallery as any)?.[1] || product.image, name: 'Versão 3' },
   ] : [];
   
-  // Check if product has versions or videos (show version selector for all products)
-  const hasVersionsOrMedia = product && (
-    (product as any).version1 || (product as any).version2 || (product as any).version3 ||
+  // Check if product has actual versions (version1/2/3) - for showing version selector
+  const hasRealVersions = product && (
+    (product as any).version1 || (product as any).version2 || (product as any).version3
+  );
+  
+  // Check if product has videos
+  const hasVideos = product && (
     (product as any).video || (product as any).video2
   );
 
@@ -221,8 +225,8 @@ export default function Product() {
               </div>
             )}
 
-            {/* Version Selector - Only show if product has versions or videos */}
-            {hasVersionsOrMedia && (
+            {/* Version Selector - Only show if product has actual versions */}
+            {hasRealVersions && (
             <div className="mb-10">
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4 block">
                 Escolha sua versão
@@ -269,115 +273,6 @@ export default function Product() {
                         </div>
                       </button>
                     ))}
-                  </div>
-                );
-              })()}
-              
-              {/* Row 2: Main Photo + Videos - only show slots that have content */}
-              {(() => {
-                const hasVideo1 = !!(product as any).video;
-                const hasVideo2 = !!(product as any).video2;
-                const itemCount = 1 + (hasVideo1 ? 1 : 0) + (hasVideo2 ? 1 : 0);
-                const gridCols = itemCount === 1 ? 'grid-cols-1' : itemCount === 2 ? 'grid-cols-2' : 'grid-cols-3';
-                return (
-                  <div className={`grid ${gridCols} gap-3`}>
-                    {/* Main Photo */}
-                    <button
-                      onClick={() => setMainImage(product.image)}
-                      className={`group relative border transition-all duration-300 ${
-                        mainImage === product.image 
-                          ? 'border-black ring-1 ring-black' 
-                          : 'border-border hover:border-black/50'
-                      }`}
-                    >
-                      <div className="aspect-square overflow-hidden">
-                        <img 
-                          src={product.image} 
-                          alt="Principal"
-                          loading="lazy"
-                          className={`w-full h-full object-cover transition-all duration-300 ${
-                            mainImage === product.image ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
-                          }`}
-                        />
-                      </div>
-                      <div className={`absolute bottom-0 left-0 right-0 py-2 text-center font-mono text-[10px] uppercase tracking-widest transition-all ${
-                        mainImage === product.image 
-                          ? 'bg-black text-white' 
-                          : 'bg-white/90 text-muted-foreground group-hover:bg-black/10'
-                      }`}>
-                        Principal
-                      </div>
-                    </button>
-                    
-                    {/* Video 1 - only render if exists */}
-                    {hasVideo1 && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <button className="group relative border border-border hover:border-black/50 transition-all duration-300">
-                            <div className="aspect-square overflow-hidden bg-black flex items-center justify-center">
-                              <div className="text-white text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-1 opacity-80 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </div>
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 py-2 text-center font-mono text-[10px] uppercase tracking-widest bg-white/90 text-muted-foreground group-hover:bg-black/10 transition-all">
-                              Vídeo 1
-                            </div>
-                          </button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px] p-0">
-                          <DialogHeader className="sr-only">
-                            <DialogTitle>Vídeo do Produto</DialogTitle>
-                            <DialogDescription>Assistir vídeo do produto</DialogDescription>
-                          </DialogHeader>
-                          <div className="aspect-[9/16] w-full max-h-[85vh]">
-                            <video
-                              src={(product as any).video}
-                              controls
-                              autoPlay
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                    
-                    {/* Video 2 - only render if exists */}
-                    {hasVideo2 && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <button className="group relative border border-border hover:border-black/50 transition-all duration-300">
-                            <div className="aspect-square overflow-hidden bg-black flex items-center justify-center">
-                              <div className="text-white text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-1 opacity-80 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </div>
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 py-2 text-center font-mono text-[10px] uppercase tracking-widest bg-white/90 text-muted-foreground group-hover:bg-black/10 transition-all">
-                              Vídeo 2
-                            </div>
-                          </button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[500px] p-0">
-                          <DialogHeader className="sr-only">
-                            <DialogTitle>Vídeo do Produto 2</DialogTitle>
-                            <DialogDescription>Assistir segundo vídeo do produto</DialogDescription>
-                          </DialogHeader>
-                          <div className="aspect-[9/16] w-full max-h-[85vh]">
-                            <video
-                              src={(product as any).video2}
-                              controls
-                              autoPlay
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    )}
                   </div>
                 );
               })()}
