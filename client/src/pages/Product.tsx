@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRoute, Link, useSearch } from 'wouter';
 import { useProducts } from '@/context/ProductContext';
 import { Button } from '@/components/ui/button';
+import { SEO, ProductSchema } from '@/components/SEO';
 import { 
   Accordion,
   AccordionContent,
@@ -148,8 +149,42 @@ export default function Product() {
     .filter(p => p.categoryId === product.categoryId && p.id !== product.id)
     .slice(0, 3);
 
+  const productUrl = typeof window !== 'undefined' ? `${window.location.origin}/product/${product.id}` : '';
+  const productImage = product.image?.startsWith('http') ? product.image : 
+    typeof window !== 'undefined' ? `${window.location.origin}${product.image}` : product.image;
+  const currentPrice = getCurrentPrice();
+  const seoDescription = getCurrentDescription()?.slice(0, 160) || `${product.name} - Joia exclusiva ZK REZK em ouro 18K.`;
+
   return (
     <div className="min-h-screen bg-background pt-32 pb-24">
+      <SEO
+        title={product.name}
+        description={seoDescription}
+        image={productImage}
+        url={productUrl}
+        type="product"
+        product={{
+          name: product.name,
+          description: seoDescription,
+          image: productImage,
+          price: currentPrice,
+          currency: 'BRL',
+          availability: 'InStock',
+          sku: `ZK-${product.id.toString().padStart(4, '0')}`,
+          brand: 'ZK REZK',
+        }}
+      />
+      <ProductSchema
+        name={product.name}
+        description={seoDescription}
+        image={productImage}
+        price={currentPrice}
+        currency="BRL"
+        availability="InStock"
+        sku={`ZK-${product.id.toString().padStart(4, '0')}`}
+        brand="ZK REZK"
+        url={productUrl}
+      />
       <div className="container mx-auto px-6 md:px-12">
         <div className="mb-12">
            <Link href="/shop" className="group inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
