@@ -389,12 +389,106 @@ export default function Product() {
             </div>
 
             {/* Additional Details Accordion */}
-            <div className="border-t border-border">
+            <div className="border-t border-border" data-testid="product-info-accordion">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="shipping" className="border-b border-border">
-                  <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">Envio e Devoluções</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground font-light pb-6">
-                    Envio expresso gratuito para todo o mundo. Aceitamos devoluções em até 14 dias após a entrega, na condição original.
+                  <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">
+                    Envio e Devoluções
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
+                    <p>
+                      Oferecemos envio expresso para todo o Brasil com rastreamento completo. 
+                      Peças em estoque são despachadas em até 2 dias úteis.
+                    </p>
+                    <p>
+                      Aceitamos devoluções em até 14 dias após a entrega, desde que a peça esteja 
+                      na embalagem original e em perfeitas condições. O reembolso é processado 
+                      em até 7 dias úteis após recebermos o produto.
+                    </p>
+                    <a 
+                      href="https://wa.me/5511999999999?text=Olá! Tenho uma dúvida sobre envio ou devolução."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-foreground font-medium hover:underline underline-offset-4"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      Falar no WhatsApp
+                    </a>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="warranty" className="border-b border-border">
+                  <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">
+                    Garantia
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
+                    <p>
+                      Todas as peças ZK REZK possuem garantia vitalícia contra defeitos de fabricação. 
+                      Isso inclui problemas com soldas, engastes e acabamentos.
+                    </p>
+                    <p>
+                      A garantia não cobre desgaste natural, arranhões de uso, danos por mau uso ou 
+                      reparos realizados por terceiros. Recomendamos revisões anuais para manter 
+                      sua joia sempre impecável.
+                    </p>
+                    <a 
+                      href="https://wa.me/5511999999999?text=Olá! Preciso de suporte sobre garantia."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-foreground font-medium hover:underline underline-offset-4"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                      Falar no WhatsApp
+                    </a>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="certification" className="border-b border-border">
+                  <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">
+                    Certificação e Procedência
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
+                    <p>
+                      Utilizamos exclusivamente ouro 18K certificado e diamantes livres de conflitos, 
+                      com rastreabilidade completa desde a origem até a peça finalizada.
+                    </p>
+                    <p>
+                      Cada peça acompanha certificado de autenticidade com informações detalhadas 
+                      sobre materiais, peso e especificações técnicas. Diamantes acima de 0.30ct 
+                      possuem certificação internacional (GIA, IGI ou equivalente).
+                    </p>
+                    <p>
+                      Nossos fornecedores seguem práticas de mineração responsável e são auditados 
+                      regularmente para garantir conformidade ética e ambiental.
+                    </p>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="production" className="border-b border-border">
+                  <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">
+                    Prazo de Produção e Ajustes
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
+                    <p>
+                      <strong className="text-foreground">Peças em estoque:</strong> Envio em até 2 dias úteis após confirmação do pagamento.
+                    </p>
+                    <p>
+                      <strong className="text-foreground">Produção sob encomenda:</strong> Prazo de 15 a 25 dias úteis, dependendo 
+                      da complexidade da peça. Você receberá atualizações durante todo o processo.
+                    </p>
+                    <p>
+                      <strong className="text-foreground">Ajustes de tamanho:</strong> Oferecemos o primeiro ajuste gratuito para 
+                      anéis e pulseiras. Ajustes adicionais têm custo a partir de R$ 150, dependendo 
+                      do tipo de peça e material.
+                    </p>
+                    <p>
+                      <strong className="text-foreground">Gravações personalizadas:</strong> Disponíveis para a maioria das peças. 
+                      Consulte antes de finalizar a compra.
+                    </p>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
