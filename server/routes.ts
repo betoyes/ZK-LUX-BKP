@@ -61,6 +61,14 @@ const resendVerificationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: { message: "Muitas tentativas de alteração de senha. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Helper to get client IP
 function getClientIp(req: Request): string | null {
   return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || null;
@@ -614,6 +622,57 @@ export async function registerRoutes(
       }
       res.json({ message: "Logout realizado com sucesso" });
     });
+  });
+
+  // Change password (logged in user)
+  app.post("/api/auth/change-password", changePasswordLimiter, csrfProtection, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    const clientIp = getClientIp(req);
+    const userAgent = getUserAgent(req);
+    
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Senha atual e nova senha são obrigatórias" });
+      }
+      
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Não autenticado" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Usuário não encontrado" });
+      }
+      
+      const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentValid) {
+        await logAuditEvent(userId, 'change_password_failed', clientIp, userAgent, { reason: 'wrong_current_password' });
+        return res.status(400).json({ message: "Senha atual incorreta" });
+      }
+      
+      if (currentPassword === newPassword) {
+        return res.status(400).json({ message: "A nova senha deve ser diferente da senha atual" });
+      }
+      
+      const passwordValidation = validatePassword(newPassword);
+      if (!isPasswordValid(newPassword)) {
+        return res.status(400).json({ 
+          message: "A nova senha não atende aos requisitos mínimos de segurança",
+          feedback: passwordValidation.feedback
+        });
+      }
+      
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await storage.updateUserPassword(userId, hashedPassword);
+      
+      await logAuditEvent(userId, 'change_password', clientIp, userAgent);
+      
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
   });
 
   // Check auth status

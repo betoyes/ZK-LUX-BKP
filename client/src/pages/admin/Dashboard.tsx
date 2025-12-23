@@ -4,7 +4,7 @@ import { useProducts } from '@/context/ProductContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut, Pencil, Copy } from 'lucide-react';
+import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut, Pencil, Copy, Key } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -16,6 +16,9 @@ import ringImage from '@assets/generated_images/diamond_ring_product_shot.png';
 import necklaceImage from '@assets/generated_images/gold_necklace_product_shot.png';
 import earringsImage from '@assets/generated_images/pearl_earrings_product_shot.png';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { api } from '@/lib/api';
+import { PasswordStrengthIndicator, usePasswordValidation } from '@/components/ui/password-strength-indicator';
+import { isPasswordValid } from '@shared/passwordStrength';
 
 // Helper to select a random image based on category if user doesn't provide one (mock behavior)
 const getMockImage = (category: string) => {
@@ -64,6 +67,12 @@ export default function Dashboard() {
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [adminFormData, setAdminFormData] = useState({ email: '', password: '', confirmPassword: '' });
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
+  
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [changePasswordData, setChangePasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState('');
+  const newPasswordValidation = usePasswordValidation(changePasswordData.newPassword);
   
   const isPrimaryAdmin = user?.username === PRIMARY_ADMIN_EMAIL;
   
@@ -167,6 +176,39 @@ export default function Dashboard() {
       setLocation('/admin/login');
     } catch {
       toast({ title: "Erro", description: "Não foi possível desconectar", variant: "destructive" });
+    }
+  };
+  
+  const handleChangePassword = async () => {
+    setChangePasswordError('');
+    
+    if (!changePasswordData.currentPassword || !changePasswordData.newPassword || !changePasswordData.confirmPassword) {
+      setChangePasswordError('Preencha todos os campos');
+      return;
+    }
+    
+    if (changePasswordData.newPassword !== changePasswordData.confirmPassword) {
+      setChangePasswordError('A nova senha e a confirmação não conferem');
+      return;
+    }
+    
+    if (!isPasswordValid(changePasswordData.newPassword)) {
+      setChangePasswordError('A nova senha não atende aos requisitos mínimos de segurança');
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    try {
+      await api.auth.changePassword(changePasswordData.currentPassword, changePasswordData.newPassword);
+      toast({ title: "Sucesso", description: "Senha alterada com sucesso! Você será desconectado." });
+      setIsChangePasswordOpen(false);
+      setChangePasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      await logout();
+      setLocation('/admin/login');
+    } catch (err: any) {
+      setChangePasswordError(err.message || 'Não foi possível alterar a senha');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
   
@@ -889,6 +931,15 @@ export default function Dashboard() {
             <Link href="/" className="text-sm font-mono uppercase tracking-widest hover:underline">
               Voltar ao Site
             </Link>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="rounded-none border-black hover:bg-black hover:text-white font-mono text-xs uppercase tracking-widest flex items-center gap-2"
+              data-testid="button-change-password"
+            >
+              <Key className="h-3 w-3" /> Trocar Senha
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
@@ -2707,6 +2758,95 @@ export default function Dashboard() {
           )}
         </Tabs>
       </div>
+      
+      {/* Change Password Modal */}
+      <Dialog open={isChangePasswordOpen} onOpenChange={(open) => {
+        setIsChangePasswordOpen(open);
+        if (!open) {
+          setChangePasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+          setChangePasswordError('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Trocar Senha</DialogTitle>
+            <DialogDescription className="font-mono text-xs text-muted-foreground">
+              Altere sua senha de acesso ao painel administrativo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {changePasswordError && (
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded" data-testid="change-password-error">
+                {changePasswordError}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword" className="font-mono text-xs uppercase tracking-widest">
+                Senha Atual
+              </Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={changePasswordData.currentPassword}
+                onChange={(e) => setChangePasswordData({ ...changePasswordData, currentPassword: e.target.value })}
+                className="rounded-none border-black"
+                placeholder="Digite sua senha atual"
+                data-testid="input-current-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="font-mono text-xs uppercase tracking-widest">
+                Nova Senha
+              </Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={changePasswordData.newPassword}
+                onChange={(e) => setChangePasswordData({ ...changePasswordData, newPassword: e.target.value })}
+                className="rounded-none border-black"
+                placeholder="Digite a nova senha"
+                data-testid="input-new-password"
+              />
+              <PasswordStrengthIndicator password={changePasswordData.newPassword} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="font-mono text-xs uppercase tracking-widest">
+                Confirmar Nova Senha
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={changePasswordData.confirmPassword}
+                onChange={(e) => setChangePasswordData({ ...changePasswordData, confirmPassword: e.target.value })}
+                className="rounded-none border-black"
+                placeholder="Confirme a nova senha"
+                data-testid="input-confirm-password"
+              />
+              {changePasswordData.confirmPassword && changePasswordData.newPassword !== changePasswordData.confirmPassword && (
+                <p className="text-xs text-destructive">As senhas não conferem</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsChangePasswordOpen(false)}
+              className="rounded-none border-black"
+              data-testid="button-cancel-change-password"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleChangePassword}
+              disabled={isChangingPassword}
+              className="rounded-none bg-black text-white hover:bg-gray-800"
+              data-testid="button-submit-change-password"
+            >
+              {isChangingPassword ? 'Alterando...' : 'Alterar Senha'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

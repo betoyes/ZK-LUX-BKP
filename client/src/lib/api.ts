@@ -66,6 +66,12 @@ class APIClient {
         method: 'POST',
         body: JSON.stringify({ username, password }),
       }),
+    
+    changePassword: (currentPassword: string, newPassword: string) =>
+      this.request<{ ok: boolean }>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }),
   };
 
   // Products endpoints
