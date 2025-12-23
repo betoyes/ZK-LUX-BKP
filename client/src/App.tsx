@@ -7,6 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { CookieConsent } from "@/components/CookieConsent";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { ProductProvider } from "@/context/ProductContext";
 import { AuthProvider } from "@/context/AuthContext";
 import NotFound from "@/pages/not-found";
@@ -87,6 +88,7 @@ function App() {
                 <Router />
               </main>
               <Footer />
+              <WhatsAppButton />
               <CookieConsent />
             </div>
           </ProductProvider>

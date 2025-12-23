@@ -1414,6 +1414,16 @@ export async function registerRoutes(
     }
   });
 
+  // ============ CONFIG ROUTES ============
+
+  app.get("/api/config/whatsapp", (req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json({
+      number: process.env.WHATSAPP_NUMBER || '5511999999999',
+      message: process.env.WHATSAPP_MESSAGE || 'Olá! Gostaria de saber mais sobre as joias ZK REZK.',
+    });
+  });
+
   // ============ BRANDING ROUTES ============
   
   app.get("/api/branding", async (req, res, next) => {
