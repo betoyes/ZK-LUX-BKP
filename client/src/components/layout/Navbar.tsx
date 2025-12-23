@@ -52,10 +52,11 @@ export function Navbar() {
             
             {/* Desktop Links - Moved here for better layout balance */}
             <div className="hidden lg:flex items-center gap-8 ml-8">
-              {['Loja', 'Lookbook', 'Noivas', 'Journal', 'Manifesto'].map((item) => {
+              {['Loja', 'Lookbook', 'Noivas', 'Atelier', 'Journal', 'Manifesto'].map((item) => {
                 const href = item === 'Loja' ? '/shop' : 
                              item === 'Lookbook' ? '/lookbook' : 
                              item === 'Noivas' ? '/noivas' :
+                             item === 'Atelier' ? '/atelier' :
                              item === 'Journal' ? '/journal' :
                              item === 'Manifesto' ? '/manifesto' : '/about';
                 const isActive = location === href || (href === '/shop' && location.startsWith('/shop'));
@@ -116,6 +117,7 @@ export function Navbar() {
                           { name: 'Loja', href: '/shop' },
                           { name: 'Lookbook', href: '/lookbook' },
                           { name: 'Noivas', href: '/noivas' },
+                          { name: 'Atelier', href: '/atelier' },
                           { name: 'Journal', href: '/journal' },
                           { name: 'Manifesto', href: '/manifesto' },
                           { name: 'Sobre', href: '/about' },

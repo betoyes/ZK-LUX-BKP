@@ -35,6 +35,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import PrivacyDashboard from "@/pages/PrivacyDashboard";
 import Noivas from "@/pages/Noivas";
+import Atelier from "@/pages/Atelier";
 
 function Router() {
   return (
@@ -66,6 +67,7 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/terms-of-use" component={TermsOfUse} />
         <Route path="/manifesto" component={Manifesto} />
+        <Route path="/atelier" component={Atelier} />
         <Route component={NotFound} />
       </Switch>
     </PageTransition>
