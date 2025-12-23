@@ -1831,5 +1831,90 @@ export async function registerRoutes(
     }
   });
 
+  // ============ SEO ROUTES ============
+
+  app.get("/robots.txt", (req, res) => {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.type('text/plain');
+    res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /api/*
+Disallow: /checkout
+Disallow: /cart
+Disallow: /account
+Disallow: /privacy
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /forgot-password
+
+Sitemap: ${baseUrl}/sitemap.xml
+`);
+  });
+
+  app.get("/sitemap.xml", async (req, res, next) => {
+    try {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const products = await storage.getProducts();
+      const categories = await storage.getCategories();
+      const collections = await storage.getCollections();
+      const journalPosts = await storage.getJournalPosts();
+
+      const staticPages = [
+        { url: '/', priority: '1.0', changefreq: 'daily' },
+        { url: '/shop', priority: '0.9', changefreq: 'daily' },
+        { url: '/collections', priority: '0.8', changefreq: 'weekly' },
+        { url: '/lookbook', priority: '0.7', changefreq: 'weekly' },
+        { url: '/journal', priority: '0.7', changefreq: 'weekly' },
+        { url: '/noivas', priority: '0.7', changefreq: 'weekly' },
+        { url: '/atelier', priority: '0.7', changefreq: 'monthly' },
+        { url: '/manifesto', priority: '0.6', changefreq: 'monthly' },
+        { url: '/about', priority: '0.6', changefreq: 'monthly' },
+        { url: '/contact', priority: '0.5', changefreq: 'monthly' },
+        { url: '/privacy-policy', priority: '0.3', changefreq: 'yearly' },
+        { url: '/terms-of-use', priority: '0.3', changefreq: 'yearly' },
+      ];
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+`;
+
+      for (const page of staticPages) {
+        xml += `  <url>
+    <loc>${baseUrl}${page.url}</loc>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>
+`;
+      }
+
+      for (const product of products) {
+        xml += `  <url>
+    <loc>${baseUrl}/product/${product.id}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+`;
+      }
+
+      for (const post of journalPosts) {
+        xml += `  <url>
+    <loc>${baseUrl}/journal/${post.id}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+`;
+      }
+
+      xml += `</urlset>`;
+
+      res.type('application/xml');
+      res.send(xml);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return httpServer;
 }
