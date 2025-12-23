@@ -71,6 +71,11 @@ function getUserAgent(req: Request): string | null {
   return req.headers['user-agent'] || null;
 }
 
+// Helper to hash tokens with SHA256
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 // Extend Express User type
 declare global {
   namespace Express {
@@ -276,12 +281,14 @@ export async function registerRoutes(
       }).catch(err => console.error('Failed to send lead notification:', err));
       
       // Create email verification token and send verification email
+      // Generate random token, store ONLY the hash, send raw token via email
       const verificationToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(verificationToken);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
       
       await storage.createEmailVerificationToken({
         userId: user.id,
-        token: verificationToken,
+        tokenHash,
         expiresAt,
         createdAt: new Date().toISOString(),
       });
@@ -316,7 +323,9 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Token de verificação inválido" });
       }
       
-      const tokenData = await storage.getEmailVerificationToken(token);
+      // Hash the received token and compare to stored hash
+      const tokenHash = hashToken(token);
+      const tokenData = await storage.getEmailVerificationTokenByHash(tokenHash);
       
       if (!tokenData) {
         return res.status(400).json({ message: "Token inválido ou já utilizado" });
@@ -367,13 +376,14 @@ export async function registerRoutes(
       // Delete old verification tokens
       await storage.deleteEmailVerificationTokensByUserId(user.id);
       
-      // Create new verification token
+      // Create new verification token - store only hash, send raw token via email
       const verificationToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(verificationToken);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
       
       await storage.createEmailVerificationToken({
         userId: user.id,
-        token: verificationToken,
+        tokenHash,
         expiresAt,
         createdAt: new Date().toISOString(),
       });
@@ -416,16 +426,17 @@ export async function registerRoutes(
       // Log audit event
       await logAuditEvent(user.id, 'password_reset_request', clientIp, userAgent, { email });
       
-      // Delete old reset tokens
-      await storage.deletePasswordResetTokensByUserId(user.id);
+      // Invalidate (mark as used) all previous reset tokens for this user
+      await storage.invalidatePasswordResetTokensByUserId(user.id);
       
-      // Create new reset token
+      // Create new reset token - store only hash, send raw token via email
       const resetToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = hashToken(resetToken);
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
       
       await storage.createPasswordResetToken({
         userId: user.id,
-        token: resetToken,
+        tokenHash,
         expiresAt,
         createdAt: new Date().toISOString(),
       });
@@ -452,7 +463,9 @@ export async function registerRoutes(
         return res.status(400).json({ valid: false, message: "Token inválido" });
       }
       
-      const tokenData = await storage.getPasswordResetToken(token);
+      // Hash the received token and compare to stored hash
+      const tokenHash = hashToken(token);
+      const tokenData = await storage.getPasswordResetTokenByHash(tokenHash);
       
       if (!tokenData) {
         return res.status(400).json({ valid: false, message: "Token inválido ou já utilizado" });
@@ -489,7 +502,9 @@ export async function registerRoutes(
         });
       }
       
-      const tokenData = await storage.getPasswordResetToken(token);
+      // Hash the received token and compare to stored hash
+      const tokenHash = hashToken(token);
+      const tokenData = await storage.getPasswordResetTokenByHash(tokenHash);
       
       if (!tokenData) {
         return res.status(400).json({ message: "Token inválido ou já utilizado" });
