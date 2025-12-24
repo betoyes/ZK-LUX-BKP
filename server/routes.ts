@@ -887,16 +887,30 @@ export async function registerRoutes(
 
   // ============ PRODUCTS ROUTES ============
   
-  // Helper to strip base64 images and replace with API URLs
-  const stripBase64Images = (products: any[]) => {
+  // Helper to strip base64 images and replace with API URLs with cache buster
+  const stripBase64Images = (products: any[], cacheBuster?: string) => {
+    const v = cacheBuster || '';
     return products.map(p => ({
       ...p,
-      image: p.image?.startsWith('data:') ? `/api/products/${p.id}/image` : p.image,
-      imageColor: p.imageColor?.startsWith('data:') ? `/api/products/${p.id}/image-color` : p.imageColor,
-      version1: p.version1?.startsWith('data:') ? `/api/products/${p.id}/version1` : p.version1,
-      version2: p.version2?.startsWith('data:') ? `/api/products/${p.id}/version2` : p.version2,
-      version3: p.version3?.startsWith('data:') ? `/api/products/${p.id}/version3` : p.version3,
+      image: p.image?.startsWith('data:') ? `/api/products/${p.id}/image${v}` : p.image,
+      imageColor: p.imageColor?.startsWith('data:') ? `/api/products/${p.id}/image-color${v}` : p.imageColor,
+      version1: p.version1?.startsWith('data:') ? `/api/products/${p.id}/version1${v}` : p.version1,
+      version2: p.version2?.startsWith('data:') ? `/api/products/${p.id}/version2${v}` : p.version2,
+      version3: p.version3?.startsWith('data:') ? `/api/products/${p.id}/version3${v}` : p.version3,
     }));
+  };
+  
+  // Helper for single product
+  const stripBase64ImagesFromProduct = (p: any, cacheBuster?: string) => {
+    const v = cacheBuster || '';
+    return {
+      ...p,
+      image: p.image?.startsWith('data:') ? `/api/products/${p.id}/image${v}` : p.image,
+      imageColor: p.imageColor?.startsWith('data:') ? `/api/products/${p.id}/image-color${v}` : p.imageColor,
+      version1: p.version1?.startsWith('data:') ? `/api/products/${p.id}/version1${v}` : p.version1,
+      version2: p.version2?.startsWith('data:') ? `/api/products/${p.id}/version2${v}` : p.version2,
+      version3: p.version3?.startsWith('data:') ? `/api/products/${p.id}/version3${v}` : p.version3,
+    };
   };
 
   app.get("/api/products", async (req, res, next) => {
@@ -1057,7 +1071,8 @@ export async function registerRoutes(
     try {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
-      res.status(201).json(product);
+      const cacheBuster = `?v=${Date.now()}`;
+      res.status(201).json(stripBase64ImagesFromProduct(product, cacheBuster));
     } catch (err) {
       next(err);
     }
@@ -1107,7 +1122,8 @@ export async function registerRoutes(
       };
       
       const clonedProduct = await storage.createProduct(cloneData);
-      res.status(201).json(clonedProduct);
+      const cacheBuster = `?v=${Date.now()}`;
+      res.status(201).json(stripBase64ImagesFromProduct(clonedProduct, cacheBuster));
     } catch (err) {
       next(err);
     }
@@ -1120,7 +1136,9 @@ export async function registerRoutes(
       if (!product) {
         return res.status(404).json({ message: "Produto não encontrado" });
       }
-      res.json(product);
+      // Return with cache buster to force browser to reload images
+      const cacheBuster = `?v=${Date.now()}`;
+      res.json(stripBase64ImagesFromProduct(product, cacheBuster));
     } catch (err) {
       next(err);
     }
