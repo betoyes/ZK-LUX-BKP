@@ -948,6 +948,11 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Imagem não encontrada" });
       }
       
+      // Detect circular reference (image pointing to itself)
+      if (product.image.includes(`/api/products/${id}/image`)) {
+        return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
+      }
+      
       // If it's base64, decode and send as image
       if (product.image.startsWith('data:')) {
         const matches = product.image.match(/^data:(.+);base64,(.+)$/);
@@ -974,6 +979,11 @@ export async function registerRoutes(
       const product = await storage.getProductById(id);
       if (!product || !product.imageColor) {
         return res.status(404).json({ message: "Imagem não encontrada" });
+      }
+      
+      // Detect circular reference
+      if (product.imageColor.includes(`/api/products/${id}/image`)) {
+        return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
       }
       
       // If it's base64, decode and send as image
@@ -1007,6 +1017,12 @@ export async function registerRoutes(
       }
       
       const imageData = product[field];
+      
+      // Detect circular reference
+      if (imageData.includes(`/api/products/${id}/${field}`)) {
+        return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
+      }
+      
       if (imageData.startsWith('data:')) {
         const matches = imageData.match(/^data:(.+);base64,(.+)$/);
         if (matches) {

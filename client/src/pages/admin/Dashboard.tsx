@@ -2526,6 +2526,13 @@ export default function Dashboard() {
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
+                                  const maxSize = brandingForm.heroMediaType === 'video' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+                                  if (file.size > maxSize) {
+                                    alert(brandingForm.heroMediaType === 'video' 
+                                      ? 'Vídeo muito grande! Use uma URL externa (YouTube, Vimeo, etc) ou um vídeo de no máximo 10MB.' 
+                                      : 'Imagem muito grande! Use uma imagem de no máximo 5MB.');
+                                    return;
+                                  }
                                   const reader = new FileReader();
                                   reader.onloadend = () => {
                                     setBrandingForm({...brandingForm, heroMediaUrl: reader.result as string});
@@ -2540,8 +2547,8 @@ export default function Dashboard() {
                       </div>
                       <p className="text-[10px] text-muted-foreground">
                         {brandingForm.heroMediaType === 'video' 
-                          ? 'Vídeos em formato 16:9 recomendado (MP4)' 
-                          : 'Imagens em formato 16:9 recomendado (JPG, PNG)'}
+                          ? 'Vídeos até 10MB (MP4). Para vídeos maiores, use URL externa.' 
+                          : 'Imagens em formato 16:9 recomendado (JPG, PNG, até 5MB)'}
                       </p>
                     </div>
                     <div className="space-y-2">
