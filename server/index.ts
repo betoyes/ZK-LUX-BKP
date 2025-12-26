@@ -39,6 +39,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
+        mediaSrc: ["'self'", "data:", "blob:", "https:"],
         connectSrc: isProduction
           ? ["'self'", "https:"]
           : ["'self'", "ws:", "wss:", "https:"],
