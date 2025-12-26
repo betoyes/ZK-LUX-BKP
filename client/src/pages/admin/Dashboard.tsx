@@ -2625,6 +2625,94 @@ export default function Dashboard() {
                   />
                 </div>
 
+                <div className="border-t border-border my-6"></div>
+                <h3 className="font-display text-lg">Mídia das Páginas</h3>
+                <p className="text-xs text-muted-foreground mb-4">Configure vídeos do YouTube ou imagens para as páginas Lookbook, Noivas e Atelier</p>
+
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label>Lookbook - Tipo de Mídia</Label>
+                    <Select 
+                      value={brandingForm.lookbookMediaType || 'video'} 
+                      onValueChange={(val: 'image' | 'video') => setBrandingForm({...brandingForm, lookbookMediaType: val})}
+                    >
+                      <SelectTrigger className="rounded-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="image">Imagem</SelectItem>
+                        <SelectItem value="video">Vídeo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Lookbook - URL do Vídeo/Imagem</Label>
+                    <Input 
+                      value={brandingForm.lookbookMediaUrl || ''} 
+                      onChange={(e) => setBrandingForm({...brandingForm, lookbookMediaUrl: e.target.value})}
+                      className="rounded-none"
+                      placeholder="https://youtu.be/... ou URL da imagem"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Cole a URL do YouTube (ex: https://youtu.be/xxx) ou URL de imagem</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 mt-4">
+                  <div className="grid gap-2">
+                    <Label>Noivas - Tipo de Mídia</Label>
+                    <Select 
+                      value={brandingForm.noivasMediaType || 'image'} 
+                      onValueChange={(val: 'image' | 'video') => setBrandingForm({...brandingForm, noivasMediaType: val})}
+                    >
+                      <SelectTrigger className="rounded-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="image">Imagem</SelectItem>
+                        <SelectItem value="video">Vídeo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Noivas - URL do Vídeo/Imagem</Label>
+                    <Input 
+                      value={brandingForm.noivasMediaUrl || ''} 
+                      onChange={(e) => setBrandingForm({...brandingForm, noivasMediaUrl: e.target.value})}
+                      className="rounded-none"
+                      placeholder="https://youtu.be/... ou URL da imagem"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Cole a URL do YouTube (ex: https://youtu.be/xxx) ou URL de imagem</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 mt-4">
+                  <div className="grid gap-2">
+                    <Label>Atelier - Tipo de Mídia</Label>
+                    <Select 
+                      value={brandingForm.atelierMediaType || 'video'} 
+                      onValueChange={(val: 'image' | 'video') => setBrandingForm({...brandingForm, atelierMediaType: val})}
+                    >
+                      <SelectTrigger className="rounded-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="image">Imagem</SelectItem>
+                        <SelectItem value="video">Vídeo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Atelier - URL do Vídeo/Imagem</Label>
+                    <Input 
+                      value={brandingForm.atelierMediaUrl || ''} 
+                      onChange={(e) => setBrandingForm({...brandingForm, atelierMediaUrl: e.target.value})}
+                      className="rounded-none"
+                      placeholder="https://youtu.be/... ou URL da imagem"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Cole a URL do YouTube (ex: https://youtu.be/xxx) ou URL de imagem</p>
+                  </div>
+                </div>
+
                 <Button onClick={handleSaveBranding} className="rounded-none bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs mt-4">
                   Salvar Alterações
                 </Button>

@@ -4,6 +4,63 @@ import { ArrowRight, Heart, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
+// Helper function to render YouTube or regular media
+function renderHeroMedia(url: string | null | undefined, mediaType: string | null | undefined, fallbackImage: string) {
+  const effectiveUrl = url || fallbackImage;
+  const isVideo = mediaType === 'video' || effectiveUrl.includes('youtube') || effectiveUrl.includes('youtu.be');
+  
+  if (isVideo && effectiveUrl) {
+    // Check if it's a YouTube URL
+    const youtubeMatch = effectiveUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (youtubeMatch) {
+      const videoId = youtubeMatch[1];
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`}
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ 
+            border: 'none',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '177.78vh',
+            height: '100vh',
+            minWidth: '100%',
+            minHeight: '56.25vw',
+            transform: 'translate(-50%, -50%)',
+            filter: 'grayscale(30%)'
+          }}
+        />
+      );
+    }
+    // Regular video
+    return (
+      <video 
+        autoPlay 
+        loop 
+        muted 
+        playsInline 
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ filter: 'grayscale(30%)' }}
+      >
+        <source src={effectiveUrl} type="video/mp4" />
+      </video>
+    );
+  }
+  // Image fallback
+  return (
+    <div 
+      className="absolute inset-0 bg-cover bg-center"
+      style={{ 
+        backgroundImage: `url(${effectiveUrl})`,
+        filter: 'grayscale(30%)'
+      }}
+    />
+  );
+}
+
 export default function Noivas() {
   const { products, posts, branding } = useProducts();
   
@@ -24,13 +81,7 @@ export default function Noivas() {
     <div className="min-h-screen bg-background">
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-background z-10" />
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ 
-            backgroundImage: `url(${branding.journalHeroImage || '/placeholder-bridal.jpg'})`,
-            filter: 'grayscale(30%)'
-          }}
-        />
+        {renderHeroMedia(branding.noivasMediaUrl, branding.noivasMediaType, branding.journalHeroImage || '/placeholder-bridal.jpg')}
         <motion.div 
           className="relative z-20 text-center text-white px-6 max-w-4xl"
           initial={{ opacity: 0, y: 30 }}

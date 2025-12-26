@@ -3,8 +3,57 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import lookbookVideo from '@assets/generated_videos/cinematic_black_and_white_jewelry_fashion_video.mp4';
 
+// Helper function to detect and render YouTube embed
+function renderMedia(url: string | null | undefined, fallbackUrl: string, mediaType: string | null | undefined) {
+  const effectiveUrl = url || fallbackUrl;
+  const isVideo = mediaType === 'video' || effectiveUrl.includes('youtube') || effectiveUrl.includes('youtu.be');
+  
+  if (isVideo) {
+    // Check if it's a YouTube URL
+    const youtubeMatch = effectiveUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (youtubeMatch) {
+      const videoId = youtubeMatch[1];
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`}
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          className="w-full h-full object-cover grayscale contrast-125 pointer-events-none"
+          style={{ 
+            border: 'none',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '177.78vh',
+            height: '100vh',
+            minWidth: '100%',
+            minHeight: '56.25vw',
+            transform: 'translate(-50%, -50%)'
+          }}
+        />
+      );
+    }
+    // Regular video
+    return (
+      <video 
+        autoPlay 
+        loop 
+        muted 
+        playsInline 
+        className="w-full h-full object-cover"
+      >
+        <source src={effectiveUrl} type="video/mp4" />
+      </video>
+    );
+  }
+  // Image fallback
+  return (
+    <img src={effectiveUrl} alt="Lookbook" className="w-full h-full object-cover" />
+  );
+}
+
 export default function Lookbook() {
-  const { collections } = useProducts();
+  const { collections, branding } = useProducts();
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -15,15 +64,7 @@ export default function Lookbook() {
     <div ref={ref} className="bg-black text-white">
       <div className="h-screen flex items-center justify-center sticky top-0 overflow-hidden">
         <div className="absolute inset-0 opacity-60">
-          <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            className="w-full h-full object-cover"
-          >
-            <source src={lookbookVideo} type="video/mp4" />
-          </video>
+          {renderMedia(branding.lookbookMediaUrl, lookbookVideo, branding.lookbookMediaType)}
         </div>
         <div className="relative z-10 text-center px-6">
           <motion.h1 

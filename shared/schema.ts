@@ -245,6 +245,15 @@ export const branding = pgTable("branding", {
   journalHeroTitle: text("journal_hero_title").notNull(),
   journalHeroSubtitle: text("journal_hero_subtitle").notNull(),
   impactPhrase: text("impact_phrase").notNull(),
+  // Lookbook page media
+  lookbookMediaType: text("lookbook_media_type"), // 'image' | 'video'
+  lookbookMediaUrl: text("lookbook_media_url"),
+  // Noivas page media
+  noivasMediaType: text("noivas_media_type"), // 'image' | 'video'
+  noivasMediaUrl: text("noivas_media_url"),
+  // Atelier page media
+  atelierMediaType: text("atelier_media_type"), // 'image' | 'video'
+  atelierMediaUrl: text("atelier_media_url"),
 });
 
 export const insertBrandingSchema = createInsertSchema(branding).omit({ id: true });
