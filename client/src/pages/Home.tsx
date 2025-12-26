@@ -254,12 +254,17 @@ export default function Home() {
                       // Get zoom level from product or use default (105 = 1.05 scale)
                       const zoomScale = (product.zoomLevel || 105) / 100;
                       
+                      const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+                        e.currentTarget.style.display = 'none';
+                      };
+                      
                       if (isNoivas) {
                         return (
                           <img 
                             src={hasColorImage ? product.imageColor : product.image} 
                             alt={product.name}
                             loading="lazy"
+                            onError={handleImageError}
                             className="w-full h-full object-cover transition-transform duration-300"
                             onMouseMove={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
@@ -282,6 +287,7 @@ export default function Home() {
                             src={product.image} 
                             alt={product.name}
                             loading="lazy"
+                            onError={handleImageError}
                             className={`w-full h-full object-cover transition-transform duration-300 grayscale ${!hasColorImage ? 'group-hover:grayscale-0' : ''}`}
                             onMouseMove={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
@@ -300,6 +306,7 @@ export default function Home() {
                               src={product.imageColor} 
                               alt={product.name}
                               loading="lazy"
+                              onError={handleImageError}
                               className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 opacity-0 group-hover:opacity-100"
                               onMouseMove={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();

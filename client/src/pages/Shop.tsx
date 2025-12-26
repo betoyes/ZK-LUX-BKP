@@ -364,12 +364,17 @@ export default function Shop() {
                           const isNoivas = isNoivasActive || category?.slug === 'noivas' || category?.name?.toLowerCase() === 'noivas';
                           const hasColorImage = product.imageColor && product.image !== product.imageColor;
                           
+                          const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+                            e.currentTarget.style.display = 'none';
+                          };
+                          
                           if (isNoivas) {
                             return (
                               <img 
                                 src={hasColorImage ? product.imageColor : product.image} 
                                 alt={product.name}
                                 loading="lazy"
+                                onError={handleImageError}
                                 className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
                               />
                             );
@@ -381,6 +386,7 @@ export default function Shop() {
                                 src={product.image} 
                                 alt={product.name}
                                 loading="lazy"
+                                onError={handleImageError}
                                 className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 grayscale ${!hasColorImage ? 'group-hover:grayscale-0' : ''}`}
                               />
                               {hasColorImage && (
@@ -388,6 +394,7 @@ export default function Shop() {
                                   src={product.imageColor} 
                                   alt={product.name}
                                   loading="lazy"
+                                  onError={handleImageError}
                                   className="absolute inset-0 w-full h-full object-cover transition-all duration-700 group-hover:scale-105 opacity-0 group-hover:opacity-100"
                                 />
                               )}

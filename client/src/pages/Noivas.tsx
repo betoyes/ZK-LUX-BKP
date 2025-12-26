@@ -167,6 +167,7 @@ export default function Noivas() {
                         src={product.image} 
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     </div>
                     <h3 className="font-display text-lg mb-1">{product.name}</h3>
