@@ -91,17 +91,48 @@ export default function Home() {
           className="absolute inset-0 opacity-60"
         >
           {branding.heroMediaType === 'video' && branding.heroMediaUrl ? (
-            <video 
-              src={branding.heroMediaUrl} 
-              autoPlay 
-              loop 
-              muted 
-              playsInline
-              preload="metadata"
-              poster={img_01}
-              className="w-full h-full object-cover grayscale contrast-125"
-              style={{ willChange: 'transform' }}
-            />
+            (() => {
+              const url = branding.heroMediaUrl;
+              // Check if it's a YouTube URL
+              const youtubeMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+              if (youtubeMatch) {
+                const videoId = youtubeMatch[1];
+                return (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`}
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                    className="w-full h-full object-cover grayscale contrast-125 pointer-events-none"
+                    style={{ 
+                      willChange: 'transform',
+                      border: 'none',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      width: '177.78vh',
+                      height: '100vh',
+                      minWidth: '100%',
+                      minHeight: '56.25vw',
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  />
+                );
+              }
+              // Regular video URL or base64
+              return (
+                <video 
+                  src={url} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline
+                  preload="metadata"
+                  poster={img_01}
+                  className="w-full h-full object-cover grayscale contrast-125"
+                  style={{ willChange: 'transform' }}
+                />
+              );
+            })()
           ) : (
             <img 
               src={branding.heroMediaUrl || img_01} 

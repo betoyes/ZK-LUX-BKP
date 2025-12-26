@@ -40,6 +40,7 @@ app.use(
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         mediaSrc: ["'self'", "data:", "blob:", "https:"],
+        frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"],
         connectSrc: isProduction
           ? ["'self'", "https:"]
           : ["'self'", "ws:", "wss:", "https:"],
