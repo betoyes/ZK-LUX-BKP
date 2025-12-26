@@ -185,15 +185,33 @@ export default function Home() {
                   <span className="font-mono text-xs tracking-widest uppercase hidden md:block">Ver Campanha</span>
                 </button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[800px] p-0 bg-black border-none overflow-hidden aspect-video">
+              <DialogContent className="max-w-[95vw] md:max-w-[90vw] lg:max-w-[1200px] p-0 bg-black border-none overflow-hidden aspect-video">
                 <DialogTitle className="sr-only">Vídeo da Campanha</DialogTitle>
                 <DialogDescription className="sr-only">Assista ao vídeo promocional da campanha ZK REZK</DialogDescription>
-                <video 
-                  src={campaignVideo} 
-                  controls 
-                  autoPlay 
-                  className="w-full h-full object-cover"
-                />
+                {(() => {
+                  const videoUrl = branding.campaignVideoUrl || campaignVideo;
+                  const youtubeMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                  if (youtubeMatch) {
+                    const videoId = youtubeMatch[1];
+                    return (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                        allow="autoplay; encrypted-media; fullscreen"
+                        allowFullScreen
+                        className="w-full h-full"
+                        style={{ border: 'none' }}
+                      />
+                    );
+                  }
+                  return (
+                    <video 
+                      src={videoUrl} 
+                      controls 
+                      autoPlay 
+                      className="w-full h-full object-cover"
+                    />
+                  );
+                })()}
               </DialogContent>
             </Dialog>
             

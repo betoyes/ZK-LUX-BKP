@@ -254,6 +254,8 @@ export const branding = pgTable("branding", {
   // Atelier page media
   atelierMediaType: text("atelier_media_type"), // 'image' | 'video'
   atelierMediaUrl: text("atelier_media_url"),
+  // Campaign video (Ver Campanha button on Home)
+  campaignVideoUrl: text("campaign_video_url"),
 });
 
 export const insertBrandingSchema = createInsertSchema(branding).omit({ id: true });

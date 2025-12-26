@@ -2713,6 +2713,21 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                <div className="border-t border-border my-6"></div>
+                <h3 className="font-display text-lg">Vídeo da Campanha (Botão "Ver Campanha")</h3>
+                <p className="text-xs text-muted-foreground mb-4">Este vídeo aparece ao clicar no botão "Ver Campanha" na página inicial</p>
+
+                <div className="grid gap-2">
+                  <Label>URL do Vídeo da Campanha</Label>
+                  <Input 
+                    value={brandingForm.campaignVideoUrl || ''} 
+                    onChange={(e) => setBrandingForm({...brandingForm, campaignVideoUrl: e.target.value})}
+                    className="rounded-none"
+                    placeholder="https://youtu.be/... ou URL do vídeo"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Cole a URL do YouTube (ex: https://youtu.be/xxx) ou URL de um arquivo de vídeo. Deixe em branco para usar o vídeo padrão.</p>
+                </div>
+
                 <Button onClick={handleSaveBranding} className="rounded-none bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs mt-4">
                   Salvar Alterações
                 </Button>
