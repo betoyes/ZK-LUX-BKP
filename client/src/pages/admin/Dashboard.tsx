@@ -513,14 +513,15 @@ export default function Dashboard() {
 
     const mainImage = formData.image;
 
-    // Convert stoneVariations to JSON for storage
-    const stoneVariationsJson = formData.stoneVariations.length > 0
-      ? JSON.stringify(formData.stoneVariations.filter(v => v.name && v.price).map(v => ({
+    // Convert stoneVariations to JSON for storage (use null to clear when empty)
+    const validVariations = formData.stoneVariations.filter(v => v.name && v.price);
+    const stoneVariationsJson = validVariations.length > 0
+      ? JSON.stringify(validVariations.map(v => ({
           name: v.name,
           price: parsePriceToNumber(v.price),
           description: v.description
         })))
-      : undefined;
+      : null;
 
     updateProduct(currentProduct.id, {
       name: formData.name,
