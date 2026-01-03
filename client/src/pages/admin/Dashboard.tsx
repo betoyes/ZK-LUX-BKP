@@ -56,7 +56,7 @@ export default function Dashboard() {
     updateOrder, branding, updateBranding
   } = useProducts();
   const { toast } = useToast();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated, isAdmin, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState("overview");
@@ -77,6 +77,24 @@ export default function Dashboard() {
   const newPasswordValidation = usePasswordValidation(changePasswordData.newPassword);
   
   const isPrimaryAdmin = user?.username === PRIMARY_ADMIN_EMAIL;
+
+  useEffect(() => {
+    if (!authLoading && (!isAuthenticated || !isAdmin)) {
+      setLocation('/admin/login');
+    }
+  }, [authLoading, isAuthenticated, isAdmin, setLocation]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !isAdmin) {
+    return null;
+  }
   
   // Fetch subscribers from API
   const fetchSubscribers = async () => {
