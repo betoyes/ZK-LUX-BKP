@@ -50,9 +50,10 @@ export function Footer() {
            <div className="md:col-span-2">
             <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Social</h4>
             <ul className="space-y-4">
+              <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">LinkedIn</a></li>
               <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">Instagram</a></li>
-              <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">Twitter</a></li>
-              <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">TikTok</a></li>
+              <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">Facebook</a></li>
+              <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">Tik Tok</a></li>
             </ul>
           </div>
         </div>
