@@ -24,9 +24,6 @@ async function seed() {
     // 2. Create categories
     const categoriesData = [
       { slug: 'aneis', name: 'Anéis', description: 'Símbolos de eternidade e compromisso.' },
-      { slug: 'colares', name: 'Colares', description: 'Elegância que envolve.' },
-      { slug: 'brincos', name: 'Brincos', description: 'Detalhes que iluminam.' },
-      { slug: 'pulseiras', name: 'Pulseiras', description: 'Toque de sofisticação.' },
     ];
 
     for (const cat of categoriesData) {
@@ -69,10 +66,6 @@ async function seed() {
 
     // Get category and collection IDs for products
     const aneis = await storage.getCategoryBySlug('aneis');
-    const colares = await storage.getCategoryBySlug('colares');
-    const brincos = await storage.getCategoryBySlug('brincos');
-    const pulseiras = await storage.getCategoryBySlug('pulseiras');
-    
     const eternal = await storage.getCollectionBySlug('eternal');
     const aurora = await storage.getCollectionBySlug('aurora');
     const ocean = await storage.getCollectionBySlug('ocean');
@@ -93,28 +86,6 @@ async function seed() {
         isNew: true,
       },
       {
-        name: 'Colar Minimalist Gold',
-        price: 4200,
-        description: 'Corrente delicada em ouro amarelo 18k com pendente geométrico.',
-        image: null,
-        categoryId: colares?.id,
-        collectionId: aurora?.id,
-        specs: ['Ouro amarelo 18k', 'Comprimento 45cm'],
-        bestsellerOrder: 2,
-        isNew: false,
-      },
-      {
-        name: 'Brincos Pérola Barroca',
-        price: 3800,
-        description: 'Pérolas barrocas naturais com acabamento em ouro rosé.',
-        image: null,
-        categoryId: brincos?.id,
-        collectionId: ocean?.id,
-        specs: ['Pérolas naturais', 'Ouro rosé 18k'],
-        bestsellerOrder: 3,
-        isNew: true,
-      },
-      {
         name: 'Anel Infinity Diamond',
         price: 8900,
         description: 'Anel cravejado com diamantes em toda a volta. Ouro amarelo 18k.',
@@ -124,50 +95,6 @@ async function seed() {
         specs: ['Ouro amarelo 18k', 'Diamantes totalizando 2ct'],
         bestsellerOrder: null,
         isNew: false,
-      },
-      {
-        name: 'Gargantilha Riviera',
-        price: 25000,
-        description: 'Diamantes negros e brancos intercalados em ouro branco.',
-        image: null,
-        categoryId: colares?.id,
-        collectionId: eternal?.id,
-        specs: ['Ouro branco 18k', 'Diamantes negros e brancos'],
-        bestsellerOrder: null,
-        isNew: false,
-      },
-      {
-        name: 'Brincos Cascata de Ouro',
-        price: 5600,
-        description: 'Design fluido que imita o movimento da água. Ouro 18k.',
-        image: null,
-        categoryId: brincos?.id,
-        collectionId: aurora?.id,
-        specs: ['Ouro amarelo 18k', 'Design exclusivo'],
-        bestsellerOrder: null,
-        isNew: false,
-      },
-      {
-        name: 'Pulseira Tennis Classic',
-        price: 15000,
-        description: 'A clássica pulseira tennis com diamantes de alta pureza.',
-        image: null,
-        categoryId: pulseiras?.id,
-        collectionId: eternal?.id,
-        specs: ['Ouro branco 18k', 'Diamantes VS1', '40 diamantes'],
-        bestsellerOrder: null,
-        isNew: false,
-      },
-      {
-        name: 'Colar Medalhão Vintage',
-        price: 6700,
-        description: 'Inspiração vitoriana com um toque moderno.',
-        image: null,
-        categoryId: colares?.id,
-        collectionId: aurora?.id,
-        specs: ['Ouro amarelo 18k', 'Gravação personalizada disponível'],
-        bestsellerOrder: null,
-        isNew: true,
       },
     ];
 

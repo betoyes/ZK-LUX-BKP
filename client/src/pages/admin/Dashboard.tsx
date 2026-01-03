@@ -19,6 +19,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recha
 import { api } from '@/lib/api';
 import { PasswordStrengthIndicator, usePasswordValidation } from '@/components/ui/password-strength-indicator';
 import { isPasswordValid } from '@shared/passwordStrength';
+import { filterVisibleCategories, isHiddenCategoryKey } from '@/lib/categoryVisibility';
 
 // Helper to select a random image based on category if user doesn't provide one (mock behavior)
 const getMockImage = (category: string) => {
@@ -61,6 +62,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null);
   const [filterCollectionId, setFilterCollectionId] = useState<number | null>(null);
+  const visibleCategories = filterVisibleCategories(Array.isArray(categories) ? categories : []);
   
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -300,7 +302,7 @@ export default function Dashboard() {
 
   // Check if selected category is "Anéis" or "Anel"
   const isRingCategory = () => {
-    const selectedCat = categories.find(c => String(c.id) === formData.category);
+    const selectedCat = visibleCategories.find(c => String(c.id) === formData.category);
     return selectedCat?.name?.toLowerCase().includes('anel') || selectedCat?.name?.toLowerCase().includes('anéis');
   };
 
@@ -456,7 +458,7 @@ export default function Dashboard() {
       return;
     }
 
-    const selectedCategory = categories.find(c => String(c.id) === formData.category);
+    const selectedCategory = visibleCategories.find(c => String(c.id) === formData.category);
     const selectedCollection = collections.find(c => String(c.id) === formData.collection);
 
     const mainImage = formData.image || getMockImage(formData.category);
@@ -508,12 +510,12 @@ export default function Dashboard() {
   const handleEdit = () => {
     if (!currentProduct) return;
 
-    const selectedCategory = categories.find(c => String(c.id) === formData.category);
+    const selectedCategory = visibleCategories.find(c => String(c.id) === formData.category);
     const selectedCollection = collections.find(c => String(c.id) === formData.collection);
 
     const mainImage = formData.image;
 
-    // Convert stoneVariations to JSON for storage (use null to clear when empty)
+    // Convert stoneVariations to JSON for storage (use empty string to clear when empty)
     const validVariations = formData.stoneVariations.filter(v => v.name && v.price);
     const stoneVariationsJson = validVariations.length > 0
       ? JSON.stringify(validVariations.map(v => ({
@@ -521,7 +523,7 @@ export default function Dashboard() {
           price: parsePriceToNumber(v.price),
           description: v.description
         })))
-      : null;
+      : '';
 
     updateProduct(currentProduct.id, {
       name: formData.name,
@@ -567,7 +569,7 @@ export default function Dashboard() {
 
   const handleCloneToNoivas = async (product: any) => {
     // Check if product is already in Noivas category
-    const noivasCategory = categories.find(c => c.slug === 'noivas' || c.name?.toLowerCase() === 'noivas');
+    const noivasCategory = visibleCategories.find(c => c.slug === 'noivas' || c.name?.toLowerCase() === 'noivas');
     if (noivasCategory && product.categoryId === noivasCategory.id) {
       toast({ title: "Aviso", description: "Este produto já está na categoria Noivas", variant: "destructive" });
       return;
@@ -684,10 +686,14 @@ export default function Dashboard() {
   // Category Handlers
   const handleAddCategory = async () => {
     if (!catFormData.name) return;
+    if (isHiddenCategoryKey(catFormData.name)) {
+      toast({ title: "Aviso", description: "Esta categoria não está disponível.", variant: "destructive" });
+      return;
+    }
     
     await addCategory({ name: catFormData.name, description: catFormData.description });
     
-    const newCategory = categories.find(c => c.name === catFormData.name);
+    const newCategory = visibleCategories.find(c => c.name === catFormData.name);
     if (newCategory && selectedProductIds.length > 0) {
       for (const pid of selectedProductIds) {
         await updateProduct(pid, { categoryId: newCategory.id });
@@ -1077,7 +1083,7 @@ export default function Dashboard() {
                   Filtrando por:
                 </span>
                 <span className="font-display text-lg">
-                  {filterCategoryId && categories.find(c => c.id === filterCategoryId)?.name}
+                  {filterCategoryId && visibleCategories.find(c => c.id === filterCategoryId)?.name}
                   {filterCollectionId && collections.find(c => c.id === filterCollectionId)?.name}
                 </span>
                 <Button 
@@ -1161,7 +1167,7 @@ export default function Dashboard() {
                                 <SelectValue placeholder="Selecione..." />
                               </SelectTrigger>
                               <SelectContent>
-                                {(Array.isArray(categories) ? categories : []).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                              {visibleCategories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
@@ -1508,7 +1514,7 @@ export default function Dashboard() {
                           </div>
                         </TableCell>
                         <TableCell className="font-display text-base">{product.name}</TableCell>
-                        <TableCell className="font-mono text-xs uppercase tracking-widest">{categories.find(c => c.id === product.categoryId)?.name || '-'}</TableCell>
+                        <TableCell className="font-mono text-xs uppercase tracking-widest">{visibleCategories.find(c => c.id === product.categoryId)?.name || '-'}</TableCell>
                         <TableCell className="font-mono text-xs uppercase tracking-widest">{collections.find(c => c.id === product.collectionId)?.name || '-'}</TableCell>
                         <TableCell className="font-mono text-sm text-right">R$ {(product.price / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-right">
@@ -1582,7 +1588,7 @@ export default function Dashboard() {
                               <SelectValue placeholder="Selecione..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {(Array.isArray(categories) ? categories : []).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                              {visibleCategories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1955,7 +1961,7 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(Array.isArray(categories) ? categories : []).map(cat => {
+              {visibleCategories.map(cat => {
                 const productCount = (Array.isArray(products) ? products : []).filter(p => p.categoryId === cat.id).length;
                 return (
                   <div 

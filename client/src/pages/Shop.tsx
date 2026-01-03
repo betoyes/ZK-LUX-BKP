@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { motion } from 'framer-motion';
 import { ArrowRight, Heart, ChevronDown, Sparkles } from 'lucide-react';
 import StoneSelector, { hasStoneVariations, getStonePrice } from '@/components/StoneSelector';
+import { filterVisibleCategories } from '@/lib/categoryVisibility';
 
 export default function Shop() {
   const { products, categories, collections, wishlist, toggleWishlist, isLoading } = useProducts();
+  const visibleCategories = filterVisibleCategories(categories);
   const [location] = useLocation();
   const urlParams = new URLSearchParams(window.location.search);
   const initialCategory = urlParams.get('category') || 'all';
@@ -54,7 +56,7 @@ export default function Shop() {
     }
 
     // Category Filter - compare by slug or ID
-    const productCategory = categories.find(c => c.id === product.categoryId);
+    const productCategory = visibleCategories.find(c => c.id === product.categoryId);
     const categoryMatch = selectedCategories.length === 0 || 
       (productCategory && selectedCategories.includes(productCategory.slug || String(productCategory.id)));
     
@@ -260,7 +262,7 @@ export default function Shop() {
                 {/* Separator */}
                 <div className="border-b border-border my-2" />
                 
-                {categories.map(cat => (
+                {visibleCategories.map(cat => (
                   <div key={cat.id} className="flex items-center space-x-3">
                     <Checkbox 
                       id={`cat-${cat.id}`} 
@@ -360,7 +362,7 @@ export default function Shop() {
                     <Link href={productUrl}>
                       <div className="relative aspect-[3/4] bg-secondary overflow-hidden mb-6">
                         {(() => {
-                          const category = categories.find(c => c.id === product.categoryId);
+                          const category = visibleCategories.find(c => c.id === product.categoryId);
                           const isNoivas = isNoivasActive || category?.slug === 'noivas' || category?.name?.toLowerCase() === 'noivas';
                           const hasColorImage = product.imageColor && product.image !== product.imageColor;
                           

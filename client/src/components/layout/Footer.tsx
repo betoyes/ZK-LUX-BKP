@@ -1,9 +1,11 @@
 import { Link } from 'wouter';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
 import { useProducts } from '@/context/ProductContext';
+import { filterVisibleCategories } from '@/lib/categoryVisibility';
 
 export function Footer() {
   const { branding, categories } = useProducts();
+  const visibleCategories = filterVisibleCategories(categories);
   return (
     <footer className="bg-background border-t border-border pt-20 pb-10">
       <div className="container mx-auto px-4 md:px-12">
@@ -26,7 +28,7 @@ export function Footer() {
             <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Loja</h4>
             <ul className="space-y-4">
               <li><Link href="/shop" className="font-display text-xl hover:text-muted-foreground transition-colors">Ver Tudo</Link></li>
-              {categories.map((cat: any) => (
+              {visibleCategories.map((cat: any) => (
                 <li key={cat.id || cat.slug}>
                   <Link href={`/shop?category=${cat.slug || cat.id}`} className="font-display text-xl hover:text-muted-foreground transition-colors">
                     {cat.name}

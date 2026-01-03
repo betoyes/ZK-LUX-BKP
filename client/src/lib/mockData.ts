@@ -29,6 +29,7 @@ export interface Product {
   version3?: string;
   mainStoneName?: string;
   stoneVariations?: string;
+  zoomLevel?: number;
 }
 
 export interface Category {
@@ -58,6 +59,13 @@ export interface Branding {
   journalHeroTitle: string;
   journalHeroSubtitle: string;
   impactPhrase: string;
+  lookbookMediaType?: 'image' | 'video';
+  lookbookMediaUrl?: string;
+  noivasMediaType?: 'image' | 'video';
+  noivasMediaUrl?: string;
+  atelierMediaType?: 'image' | 'video';
+  atelierMediaUrl?: string;
+  campaignVideoUrl?: string;
 }
 
 export interface Subscriber {
