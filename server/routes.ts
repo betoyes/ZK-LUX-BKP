@@ -1324,7 +1324,7 @@ export async function registerRoutes(
 
   // ============ CUSTOMERS ROUTES ============
   
-  app.get("/api/customers", requireAuth, async (req, res, next) => {
+  app.get("/api/customers", requireAdmin, async (req, res, next) => {
     try {
       const customers = await storage.getCustomers();
       res.json(customers);
@@ -1333,7 +1333,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/customers", requireAuth, async (req, res, next) => {
+  app.post("/api/customers", requireAdmin, async (req, res, next) => {
     try {
       const data = insertCustomerSchema.parse(req.body);
       const customer = await storage.createCustomer(data);
@@ -1350,7 +1350,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/customers/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/customers/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const customer = await storage.updateCustomer(id, req.body);
@@ -1363,7 +1363,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/customers/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/customers/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCustomer(id);
