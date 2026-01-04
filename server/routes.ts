@@ -1067,7 +1067,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/products", requireAuth, async (req, res, next) => {
+  app.post("/api/products", requireAdmin, async (req, res, next) => {
     try {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
@@ -1079,7 +1079,7 @@ export async function registerRoutes(
   });
 
   // Clone product to Noivas category
-  app.post("/api/products/:id/clone-noivas", requireAuth, async (req, res, next) => {
+  app.post("/api/products/:id/clone-noivas", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const original = await storage.getProductById(id);
@@ -1129,7 +1129,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/products/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/products/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const product = await storage.updateProduct(id, req.body);
@@ -1144,7 +1144,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/products/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/products/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteProduct(id);
