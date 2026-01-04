@@ -1214,7 +1214,7 @@ export async function registerRoutes(
 
   // ============ SUBSCRIBERS ROUTES ============
   
-  app.get("/api/subscribers", requireAuth, async (req, res, next) => {
+  app.get("/api/subscribers", requireAdmin, async (req, res, next) => {
     try {
       const { type } = req.query;
       let subscribersList;
@@ -1263,7 +1263,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/subscribers/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/subscribers/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const subscriber = await storage.updateSubscriber(id, req.body);
@@ -1276,7 +1276,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/subscribers/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/subscribers/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteSubscriber(id);
