@@ -11,3 +11,6 @@ cookies*.txt
 
 # backups
 *.bak*
+
+# ignore nested folder
+ZK-LUX/
