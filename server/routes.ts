@@ -1384,7 +1384,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/orders", requireAuth, async (req, res, next) => {
+  app.post("/api/orders", requireAdmin, async (req, res, next) => {
     try {
       const data = insertOrderSchema.parse(req.body);
       const order = await storage.createOrder(data);
@@ -1425,7 +1425,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/orders/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/orders/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const order = await storage.updateOrder(id, req.body);
@@ -1438,7 +1438,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/orders/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/orders/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteOrder(id);
