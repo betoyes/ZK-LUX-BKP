@@ -8,3 +8,6 @@ vite.config.ts.*
 cookies*.txt
 .env*
 *.log
+
+# backups
+*.bak*
