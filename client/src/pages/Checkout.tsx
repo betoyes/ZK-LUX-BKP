@@ -111,7 +111,7 @@ export default function Checkout() {
   const [paymentConfig, setPaymentConfig] = useState<{ configured: boolean; sandbox: boolean } | null>(null);
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const { toast } = useToast();
-  const { cart, products } = useProducts();
+  const { cart, products, clearCart } = useProducts();
 
   const cartItems = useMemo(() => {
     return cart.map(item => {
@@ -305,6 +305,7 @@ export default function Checkout() {
       }
 
       if (data.status === 'CONFIRMED' || data.status === 'RECEIVED') {
+        clearCart();
         setStep('success');
         toast({
           title: "Pagamento confirmado!",
@@ -315,6 +316,7 @@ export default function Checkout() {
           title: "Pagamento em análise",
           description: "Seu pagamento está sendo processado. Você receberá uma confirmação em breve.",
         });
+        clearCart();
         setStep('success');
       }
     } catch (error: any) {
@@ -348,6 +350,7 @@ export default function Checkout() {
       const data = await response.json();
 
       if (data.status === 'RECEIVED' || data.status === 'CONFIRMED') {
+        clearCart();
         setStep('success');
         toast({
           title: "Pagamento confirmado!",
@@ -378,6 +381,7 @@ export default function Checkout() {
       const data = await response.json();
 
       if (response.ok) {
+        clearCart();
         setStep('success');
         toast({
           title: "Pagamento simulado!",
