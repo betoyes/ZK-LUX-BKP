@@ -15,10 +15,12 @@ import {
   insertProductSchema, insertJournalPostSchema, insertSubscriberSchema,
   insertCustomerSchema, insertOrderSchema, insertBrandingSchema,
   registerUserSchema, loginUserSchema,
+  createPixPaymentSchema, createCreditCardPaymentSchema,
   type User,
 } from "@shared/schema";
 import { sendPasswordResetEmail, sendAdminNotification, sendVerificationEmail } from "./email";
 import { validatePassword, isPasswordValid } from "../shared/passwordStrength";
+import * as asaas from "./asaas";
 
 // Rate limiters for authentication routes
 const loginLimiter = rateLimit({
@@ -1947,6 +1949,228 @@ Sitemap: ${baseUrl}/sitemap.xml
       res.send(xml);
     } catch (err) {
       next(err);
+    }
+  });
+
+  // ============ PAYMENT ROUTES (ASAAS) ============
+
+  // Rate limiter for payment routes
+  const paymentLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: { message: "Muitas tentativas de pagamento. Tente novamente em 15 minutos." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Check if Asaas is configured
+  app.get("/api/payments/config", async (req, res) => {
+    res.json({
+      configured: asaas.isAsaasConfigured(),
+      sandbox: asaas.isSandboxMode(),
+    });
+  });
+
+  // Create PIX payment
+  app.post("/api/payments/pix", paymentLimiter, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!asaas.isAsaasConfigured()) {
+        return res.status(503).json({ message: "Sistema de pagamento não configurado" });
+      }
+
+      const validationResult = createPixPaymentSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => e.message);
+        return res.status(400).json({ message: errors.join(", ") });
+      }
+
+      const data = validationResult.data;
+
+      // Create or get Asaas customer
+      const asaasCustomer = await asaas.createOrGetAsaasCustomer({
+        name: data.name,
+        email: data.email,
+        cpfCnpj: data.cpfCnpj,
+        phone: data.phone,
+      });
+
+      // Save customer locally if not exists
+      let localCustomer = await storage.getAsaasCustomerByAsaasId(asaasCustomer.id);
+      if (!localCustomer) {
+        localCustomer = await storage.createAsaasCustomer({
+          email: data.email,
+          name: data.name,
+          cpfCnpj: data.cpfCnpj.replace(/\D/g, ''),
+          phone: data.phone,
+          asaasId: asaasCustomer.id,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      // Create PIX payment
+      const payment = await asaas.createPixPayment(asaasCustomer.id, data);
+
+      // Get QR Code
+      const qrCode = await asaas.getPixQrCode(payment.id);
+
+      // Save payment locally
+      const localPayment = await storage.createAsaasPayment({
+        asaasCustomerId: localCustomer.id,
+        asaasPaymentId: payment.id,
+        billingType: 'PIX',
+        value: Math.round(data.value),
+        status: payment.status,
+        dueDate: payment.dueDate,
+        invoiceUrl: payment.invoiceUrl,
+        pixQrCodeImage: qrCode.encodedImage,
+        pixQrCodePayload: qrCode.payload,
+        createdAt: new Date().toISOString(),
+      });
+
+      res.json({
+        paymentId: localPayment.id,
+        asaasPaymentId: payment.id,
+        status: payment.status,
+        qrCodeImage: qrCode.encodedImage,
+        qrCodePayload: qrCode.payload,
+        expirationDate: qrCode.expirationDate,
+        invoiceUrl: payment.invoiceUrl,
+      });
+    } catch (err: any) {
+      console.error('Error creating PIX payment:', err);
+      res.status(400).json({ message: err.message || "Erro ao criar pagamento PIX" });
+    }
+  });
+
+  // Create Credit Card payment
+  app.post("/api/payments/credit-card", paymentLimiter, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!asaas.isAsaasConfigured()) {
+        return res.status(503).json({ message: "Sistema de pagamento não configurado" });
+      }
+
+      const validationResult = createCreditCardPaymentSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => e.message);
+        return res.status(400).json({ message: errors.join(", ") });
+      }
+
+      const data = validationResult.data;
+      const remoteIp = getClientIp(req) || '127.0.0.1';
+
+      // Create or get Asaas customer
+      const asaasCustomer = await asaas.createOrGetAsaasCustomer({
+        name: data.name,
+        email: data.email,
+        cpfCnpj: data.cpfCnpj,
+        phone: data.phone,
+      });
+
+      // Save customer locally if not exists
+      let localCustomer = await storage.getAsaasCustomerByAsaasId(asaasCustomer.id);
+      if (!localCustomer) {
+        localCustomer = await storage.createAsaasCustomer({
+          email: data.email,
+          name: data.name,
+          cpfCnpj: data.cpfCnpj.replace(/\D/g, ''),
+          phone: data.phone,
+          asaasId: asaasCustomer.id,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      // Create Credit Card payment
+      const payment = await asaas.createCreditCardPayment(asaasCustomer.id, data, remoteIp);
+
+      // Save payment locally
+      const localPayment = await storage.createAsaasPayment({
+        asaasCustomerId: localCustomer.id,
+        asaasPaymentId: payment.id,
+        billingType: 'CREDIT_CARD',
+        value: Math.round(data.value),
+        status: payment.status,
+        dueDate: payment.dueDate,
+        paymentDate: payment.paymentDate,
+        invoiceUrl: payment.invoiceUrl,
+        creditCardLastDigits: payment.creditCard?.creditCardNumber,
+        creditCardBrand: payment.creditCard?.creditCardBrand,
+        createdAt: new Date().toISOString(),
+      });
+
+      res.json({
+        paymentId: localPayment.id,
+        asaasPaymentId: payment.id,
+        status: payment.status,
+        invoiceUrl: payment.invoiceUrl,
+        creditCardLastDigits: payment.creditCard?.creditCardNumber,
+        creditCardBrand: payment.creditCard?.creditCardBrand,
+      });
+    } catch (err: any) {
+      console.error('Error creating Credit Card payment:', err);
+      res.status(400).json({ message: err.message || "Erro ao processar pagamento com cartão" });
+    }
+  });
+
+  // Get payment status
+  app.get("/api/payments/:paymentId/status", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const localPayment = await storage.getAsaasPaymentById(parseInt(req.params.paymentId));
+      if (!localPayment) {
+        return res.status(404).json({ message: "Pagamento não encontrado" });
+      }
+
+      // Get latest status from Asaas
+      const asaasPayment = await asaas.getPaymentStatus(localPayment.asaasPaymentId);
+
+      // Update local status if changed
+      if (asaasPayment.status !== localPayment.status) {
+        await storage.updateAsaasPayment(localPayment.id, {
+          status: asaasPayment.status,
+          paymentDate: asaasPayment.paymentDate,
+        });
+      }
+
+      res.json({
+        paymentId: localPayment.id,
+        status: asaasPayment.status,
+        paymentDate: asaasPayment.paymentDate,
+        billingType: localPayment.billingType,
+      });
+    } catch (err: any) {
+      console.error('Error getting payment status:', err);
+      res.status(400).json({ message: err.message || "Erro ao consultar status do pagamento" });
+    }
+  });
+
+  // Sandbox: Simulate payment confirmation (only in sandbox mode)
+  app.post("/api/payments/:paymentId/simulate-payment", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!asaas.isSandboxMode()) {
+        return res.status(403).json({ message: "Esta função só está disponível em ambiente Sandbox" });
+      }
+
+      const localPayment = await storage.getAsaasPaymentById(parseInt(req.params.paymentId));
+      if (!localPayment) {
+        return res.status(404).json({ message: "Pagamento não encontrado" });
+      }
+
+      // Confirm payment in sandbox
+      const asaasPayment = await asaas.confirmSandboxPayment(localPayment.asaasPaymentId);
+
+      // Update local status
+      await storage.updateAsaasPayment(localPayment.id, {
+        status: asaasPayment.status,
+        paymentDate: asaasPayment.paymentDate || new Date().toISOString().split('T')[0],
+      });
+
+      res.json({
+        paymentId: localPayment.id,
+        status: asaasPayment.status,
+        message: "Pagamento confirmado com sucesso (simulação)",
+      });
+    } catch (err: any) {
+      console.error('Error simulating payment:', err);
+      res.status(400).json({ message: err.message || "Erro ao simular pagamento" });
     }
   });
 
