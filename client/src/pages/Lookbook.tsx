@@ -1,7 +1,7 @@
 import { useProducts } from '@/context/ProductContext';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
-import lookbookVideo from '@assets/generated_videos/cinematic_black_and_white_jewelry_fashion_video.mp4';
+import lookbookVideo from '@assets/generated_videos/cinematic_black_and_white_jewelry_fashion_video_optimized.mp4';
 
 // Helper function to detect and render YouTube embed
 function renderMedia(url: string | null | undefined, fallbackUrl: string, mediaType: string | null | undefined) {
