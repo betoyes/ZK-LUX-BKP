@@ -115,6 +115,22 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+    // Cache simples em memória para GET /api/products (60s)
+  const productsCache = new Map<string, { ts: number; data: any }>();
+  const PRODUCTS_CACHE_TTL_MS = 60_000;
+
+  function getProductsCache(key: string) {
+    const hit = productsCache.get(key);
+    if (!hit) return null;
+    if (Date.now() - hit.ts > PRODUCTS_CACHE_TTL_MS) return null;
+    return hit.data;
+  }
+
+  function setProductsCache(key: string, data: any) {
+    productsCache.set(key, { ts: Date.now(), data });
+  }
+
   
   // Validate SESSION_SECRET in production
   if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
@@ -915,6 +931,12 @@ export async function registerRoutes(
 
   app.get("/api/products", async (req, res, next) => {
     try {
+
+    const cacheKey = req.originalUrl;
+    const cached = getProductsCache(cacheKey);
+    if (cached) return res.json(cached);
+
+
       res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
       const { category, collection, bestsellers, new: isNew, full } = req.query;
       
@@ -945,7 +967,7 @@ export async function registerRoutes(
       if (full !== 'true') {
         products = stripBase64Images(products);
       }
-      
+          setProductsCache(cacheKey, products);
       res.json(products);
     } catch (err) {
       next(err);
