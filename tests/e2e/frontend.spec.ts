@@ -34,38 +34,36 @@ test.describe('Frontend UX Smoke (P0)', () => {
 
     await page.getByTestId('button-submit-checkout').click();
 
-    // Como o submit deve ser bloqueado sem frete calculado, continuamos na rota /checkout
+    // Como o submit deve ser bloqueado sem frete, continuamos em /checkout
     await expect(page).toHaveURL(/\/checkout/);
   });
 
   test('Checkout calculates shipping with valid CEP and updates totals', async ({ page }) => {
     await page.goto('/checkout');
 
-    // Antes: deve estar pendente
+    // Antes: frete pendente
     await expect(page.getByTestId('text-shipping-pending')).toBeVisible();
 
     // Captura subtotal e total antes, só para comparar depois
-    const subtotalBefore = (await page.getByTestId('text-subtotal').textContent())?.trim() || '';
-    const totalBefore = (await page.getByTestId('text-total').textContent())?.trim() || '';
+    const subtotalBefore = ((await page.getByTestId('text-subtotal').textContent()) ?? '').trim();
+    const totalBefore = ((await page.getByTestId('text-total').textContent()) ?? '').trim();
 
-    // Dispara o cálculo (há debounce de ~500ms no código)
+    // Dispara o cálculo (há debounce ~500ms no código)
     await page.getByTestId('input-cep').fill('01310-000');
 
-    // Resultado do frete deve aparecer
-    await expect(page.getByTestId('shipping-result')).toBeVisible();
+    // Aguarda o resultado aparecer
+    await expect(page.getByTestId('shipping-result')).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('text-shipping-price')).toBeVisible();
     await expect(page.getByTestId('text-shipping-days')).toBeVisible();
 
-    // O "Informe o CEP" deve sumir e o valor de frete no resumo deve aparecer
+    // "Informe o CEP" deve sumir e o valor do frete no resumo deve aparecer
     await expect(page.getByTestId('text-shipping-pending')).toHaveCount(0);
     await expect(page.getByTestId('text-summary-shipping')).toBeVisible();
 
-    // Total deve existir (e idealmente mudar vs antes)
-    const totalAfter = (await page.getByTestId('text-total').textContent())?.trim() || '';
+    // Total deve existir e, normalmente, mudar depois do frete (sem travar em valor exato)
+    const totalAfter = ((await page.getByTestId('text-total').textContent()) ?? '').trim();
     expect(totalAfter.length).toBeGreaterThan(0);
 
-    // Se o frete não for zero, total normalmente muda
-    // (não travamos o teste em um valor exato para evitar flaky)
     if (subtotalBefore && totalBefore) {
       expect(totalAfter).not.toEqual(totalBefore);
     }
