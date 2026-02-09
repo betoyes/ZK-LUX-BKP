@@ -117,21 +117,36 @@ export async function registerRoutes(
 ): Promise<Server> {
 
     // Cache simples em memória para GET /api/products (60s)
-  const productsCache = new Map<string, { ts: number; data: any }>();
-  const PRODUCTS_CACHE_TTL_MS = 60_000;
+// Cache simples em memória para GET /api/products (60s)
+const productsCache = new Map<string, { ts: number; data: any }>();
+const PRODUCTS_CACHE_TTL_MS = 60_000;
 
-  function getProductsCache(key: string) {
-    const hit = productsCache.get(key);
-    if (!hit) return null;
-    if (Date.now() - hit.ts > PRODUCTS_CACHE_TTL_MS) return null;
-    return hit.data;
+function getProductsCache(key: string) {
+  const hit = productsCache.get(key);
+  if (!hit) return null;
+
+  // remove cache vencido para não crescer memória
+  if (Date.now() - hit.ts > PRODUCTS_CACHE_TTL_MS) {
+    productsCache.delete(key);
+    return null;
   }
 
-  function setProductsCache(key: string, data: any) {
-    productsCache.set(key, { ts: Date.now(), data });
-  }
+  return hit.data;
+}
 
-  
+function setProductsCache(key: string, data: any) {
+  productsCache.set(key, { ts: Date.now(), data });
+}
+
+function invalidateProductsCache() {
+  // apaga qualquer cache relacionado a /api/products (com ou sem querystring)
+  for (const key of Array.from(productsCache.keys())) {
+    if (key.startsWith("/api/products")) {
+      productsCache.delete(key);
+    }
+  }
+}
+ 
   // Validate SESSION_SECRET in production
   if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET must be set in production environment");
@@ -902,279 +917,288 @@ export async function registerRoutes(
   });
 
   // ============ PRODUCTS ROUTES ============
-  
-  // Helper to strip base64 images and replace with API URLs with cache buster
-  const stripBase64Images = (products: any[], cacheBuster?: string) => {
-    const v = cacheBuster || '';
-    return products.map(p => ({
-      ...p,
-      image: p.image?.startsWith('data:') ? `/api/products/${p.id}/image${v}` : p.image,
-      imageColor: p.imageColor?.startsWith('data:') ? `/api/products/${p.id}/image-color${v}` : p.imageColor,
-      version1: p.version1?.startsWith('data:') ? `/api/products/${p.id}/version1${v}` : p.version1,
-      version2: p.version2?.startsWith('data:') ? `/api/products/${p.id}/version2${v}` : p.version2,
-      version3: p.version3?.startsWith('data:') ? `/api/products/${p.id}/version3${v}` : p.version3,
-    }));
-  };
-  
-  // Helper for single product
-  const stripBase64ImagesFromProduct = (p: any, cacheBuster?: string) => {
-    const v = cacheBuster || '';
-    return {
-      ...p,
-      image: p.image?.startsWith('data:') ? `/api/products/${p.id}/image${v}` : p.image,
-      imageColor: p.imageColor?.startsWith('data:') ? `/api/products/${p.id}/image-color${v}` : p.imageColor,
-      version1: p.version1?.startsWith('data:') ? `/api/products/${p.id}/version1${v}` : p.version1,
-      version2: p.version2?.startsWith('data:') ? `/api/products/${p.id}/version2${v}` : p.version2,
-      version3: p.version3?.startsWith('data:') ? `/api/products/${p.id}/version3${v}` : p.version3,
-    };
-  };
+// ============ PRODUCTS ROUTES ============
 
-  app.get("/api/products", async (req, res, next) => {
-    try {
+// Helper to strip base64 images and replace with API URLs with cache buster
+const stripBase64Images = (products: any[], cacheBuster?: string) => {
+  const v = cacheBuster || "";
+  return products.map((p) => ({
+    ...p,
+    image: p.image?.startsWith("data:") ? `/api/products/${p.id}/image${v}` : p.image,
+    imageColor: p.imageColor?.startsWith("data:") ? `/api/products/${p.id}/image-color${v}` : p.imageColor,
+    version1: p.version1?.startsWith("data:") ? `/api/products/${p.id}/version1${v}` : p.version1,
+    version2: p.version2?.startsWith("data:") ? `/api/products/${p.id}/version2${v}` : p.version2,
+    version3: p.version3?.startsWith("data:") ? `/api/products/${p.id}/version3${v}` : p.version3,
+  }));
+};
 
+// Helper for single product
+const stripBase64ImagesFromProduct = (p: any, cacheBuster?: string) => {
+  const v = cacheBuster || "";
+  return {
+    ...p,
+    image: p.image?.startsWith("data:") ? `/api/products/${p.id}/image${v}` : p.image,
+    imageColor: p.imageColor?.startsWith("data:") ? `/api/products/${p.id}/image-color${v}` : p.imageColor,
+    version1: p.version1?.startsWith("data:") ? `/api/products/${p.id}/version1${v}` : p.version1,
+    version2: p.version2?.startsWith("data:") ? `/api/products/${p.id}/version2${v}` : p.version2,
+    version3: p.version3?.startsWith("data:") ? `/api/products/${p.id}/version3${v}` : p.version3,
+  };
+};
+
+app.get("/api/products", async (req, res, next) => {
+  try {
     const cacheKey = req.originalUrl;
     const cached = getProductsCache(cacheKey);
     if (cached) return res.json(cached);
 
+    res.set("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
+    const { category, collection, bestsellers, new: isNew, full } = req.query;
 
-      res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
-      const { category, collection, bestsellers, new: isNew, full } = req.query;
-      
-      let products: any[] = [];
-      if (bestsellers === 'true') {
-        products = await storage.getBestsellers();
-      } else if (isNew === 'true') {
-        products = await storage.getNewProducts();
-      } else if (category) {
-        const cat = await storage.getCategoryBySlug(category as string);
-        if (cat) {
-          products = await storage.getProductsByCategory(cat.id);
-        } else {
-          products = [];
-        }
-      } else if (collection) {
-        const col = await storage.getCollectionBySlug(collection as string);
-        if (col) {
-          products = await storage.getProductsByCollection(col.id);
-        } else {
-          products = [];
-        }
-      } else {
-        products = await storage.getProducts();
-      }
-      
-      // Strip base64 images to reduce payload size (unless full=true is requested)
-      if (full !== 'true') {
-        products = stripBase64Images(products);
-      }
-          setProductsCache(cacheKey, products);
-      res.json(products);
-    } catch (err) {
-      next(err);
-    }
-  });
+    let products: any[] = [];
 
-  // Serve product images separately
-  app.get("/api/products/:id/image", async (req, res, next) => {
-    try {
-      res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
-      const id = parseInt(req.params.id);
-      const product = await storage.getProductById(id);
-      if (!product || !product.image) {
-        return res.status(404).json({ message: "Imagem não encontrada" });
-      }
-      
-      // Detect circular reference (image pointing to itself)
-      if (product.image.includes(`/api/products/${id}/image`)) {
-        return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
-      }
-      
-      // If it's base64, decode and send as image
-      if (product.image.startsWith('data:')) {
-        const matches = product.image.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, 'base64');
-          res.set('Content-Type', mimeType);
-          return res.send(buffer);
-        }
-      }
-      
-      // If it's a URL, redirect to it
-      res.redirect(product.image);
-    } catch (err) {
-      next(err);
+    if (bestsellers === "true") {
+      products = await storage.getBestsellers();
+    } else if (isNew === "true") {
+      products = await storage.getNewProducts();
+    } else if (category) {
+      const cat = await storage.getCategoryBySlug(category as string);
+      products = cat ? await storage.getProductsByCategory(cat.id) : [];
+    } else if (collection) {
+      const col = await storage.getCollectionBySlug(collection as string);
+      products = col ? await storage.getProductsByCollection(col.id) : [];
+    } else {
+      products = await storage.getProducts();
     }
-  });
 
-  app.get("/api/products/:id/image-color", async (req, res, next) => {
-    try {
-      res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
-      const id = parseInt(req.params.id);
-      const product = await storage.getProductById(id);
-      if (!product || !product.imageColor) {
-        return res.status(404).json({ message: "Imagem não encontrada" });
-      }
-      
-      // Detect circular reference
-      if (product.imageColor.includes(`/api/products/${id}/image`)) {
-        return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
-      }
-      
-      // If it's base64, decode and send as image
-      if (product.imageColor.startsWith('data:')) {
-        const matches = product.imageColor.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, 'base64');
-          res.set('Content-Type', mimeType);
-          return res.send(buffer);
-        }
-      }
-      
-      // If it's a URL, redirect to it
-      res.redirect(product.imageColor);
-    } catch (err) {
-      next(err);
+    // Strip base64 images to reduce payload size (unless full=true is requested)
+    if (full !== "true") {
+      products = stripBase64Images(products);
     }
-  });
 
-  // Generic endpoint for version images
-  app.get("/api/products/:id/:field(version1|version2|version3)", async (req, res, next) => {
-    try {
-      res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
-      const id = parseInt(req.params.id);
-      const field = req.params.field as 'version1' | 'version2' | 'version3';
-      const product = await storage.getProductById(id);
-      if (!product || !product[field]) {
-        return res.status(404).json({ message: "Imagem não encontrada" });
-      }
-      
-      const imageData = product[field];
-      
-      // Detect circular reference
-      if (imageData.includes(`/api/products/${id}/${field}`)) {
-        return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
-      }
-      
-      if (imageData.startsWith('data:')) {
-        const matches = imageData.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, 'base64');
-          res.set('Content-Type', mimeType);
-          return res.send(buffer);
-        }
-      }
-      
-      res.redirect(imageData);
-    } catch (err) {
-      next(err);
-    }
-  });
+    // cacheia somente se deu tudo certo
+    setProductsCache(cacheKey, products);
+    return res.json(products);
+  } catch (err) {
+    return next(err);
+  }
+});
 
-  app.get("/api/products/:id", async (req, res, next) => {
-    try {
-      const id = parseInt(req.params.id);
-      const product = await storage.getProductById(id);
-      if (!product) {
-        return res.status(404).json({ message: "Produto não encontrado" });
-      }
-      res.json(product);
-    } catch (err) {
-      next(err);
+// Serve product images separately
+app.get("/api/products/:id/image", async (req, res, next) => {
+  try {
+    res.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+    const id = parseInt(req.params.id);
+    const product = await storage.getProductById(id);
+    if (!product || !product.image) {
+      return res.status(404).json({ message: "Imagem não encontrada" });
     }
-  });
 
-  app.post("/api/products", requireAdmin, async (req, res, next) => {
-    try {
-      const data = insertProductSchema.parse(req.body);
-      const product = await storage.createProduct(data);
-      const cacheBuster = `?v=${Date.now()}`;
-      res.status(201).json(stripBase64ImagesFromProduct(product, cacheBuster));
-    } catch (err) {
-      next(err);
+    // Detect circular reference (image pointing to itself)
+    if (product.image.includes(`/api/products/${id}/image`)) {
+      return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
     }
-  });
 
-  // Clone product to Noivas category
-  app.post("/api/products/:id/clone-noivas", requireAdmin, async (req, res, next) => {
-    try {
-      const id = parseInt(req.params.id);
-      const original = await storage.getProductById(id);
-      if (!original) {
-        return res.status(404).json({ message: "Produto não encontrado" });
+    // If it's base64, decode and send as image
+    if (product.image.startsWith("data:")) {
+      const matches = product.image.match(/^data:(.+);base64,(.+)$/);
+      if (matches) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, "base64");
+        res.set("Content-Type", mimeType);
+        return res.send(buffer);
       }
-      
-      // Find Noivas category
-      const noivasCategory = await storage.getCategoryBySlug('noivas');
-      if (!noivasCategory) {
-        return res.status(400).json({ message: "Categoria Noivas não encontrada" });
-      }
-      
-      // Clone product with Noivas category
-      const cloneData = {
-        name: `${original.name} - Noivas`,
-        price: original.price,
-        description: original.description,
-        image: original.image,
-        imageColor: original.imageColor,
-        gallery: original.gallery,
-        video: original.video,
-        video2: original.video2,
-        version1: original.version1,
-        version2: original.version2,
-        version3: original.version3,
-        categoryId: noivasCategory.id,
-        collectionId: original.collectionId,
-        specs: original.specs,
-        bestsellerOrder: null,
-        isNew: original.isNew,
-        priceDiamondSynthetic: original.priceDiamondSynthetic,
-        priceZirconia: original.priceZirconia,
-        descriptionDiamondSynthetic: original.descriptionDiamondSynthetic,
-        descriptionZirconia: original.descriptionZirconia,
-        specsDiamondSynthetic: original.specsDiamondSynthetic,
-        specsZirconia: original.specsZirconia,
-        mainStoneName: original.mainStoneName,
-        stoneVariations: original.stoneVariations,
-      };
-      
-      const clonedProduct = await storage.createProduct(cloneData);
-      const cacheBuster = `?v=${Date.now()}`;
-      res.status(201).json(stripBase64ImagesFromProduct(clonedProduct, cacheBuster));
-    } catch (err) {
-      next(err);
     }
-  });
 
-  app.patch("/api/products/:id", requireAdmin, async (req, res, next) => {
-    try {
-      const id = parseInt(req.params.id);
-      const product = await storage.updateProduct(id, req.body);
-      if (!product) {
-        return res.status(404).json({ message: "Produto não encontrado" });
-      }
-      // Return with cache buster to force browser to reload images
-      const cacheBuster = `?v=${Date.now()}`;
-      res.json(stripBase64ImagesFromProduct(product, cacheBuster));
-    } catch (err) {
-      next(err);
-    }
-  });
+    // If it's a URL, redirect to it
+    return res.redirect(product.image);
+  } catch (err) {
+    return next(err);
+  }
+});
 
-  app.delete("/api/products/:id", requireAdmin, async (req, res, next) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteProduct(id);
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+app.get("/api/products/:id/image-color", async (req, res, next) => {
+  try {
+    res.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+    const id = parseInt(req.params.id);
+    const product = await storage.getProductById(id);
+    if (!product || !product.imageColor) {
+      return res.status(404).json({ message: "Imagem não encontrada" });
     }
-  });
+
+    // Detect circular reference
+    if (product.imageColor.includes(`/api/products/${id}/image`)) {
+      return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
+    }
+
+    // If it's base64, decode and send as image
+    if (product.imageColor.startsWith("data:")) {
+      const matches = product.imageColor.match(/^data:(.+);base64,(.+)$/);
+      if (matches) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, "base64");
+        res.set("Content-Type", mimeType);
+        return res.send(buffer);
+      }
+    }
+
+    // If it's a URL, redirect to it
+    return res.redirect(product.imageColor);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Generic endpoint for version images
+app.get("/api/products/:id/:field(version1|version2|version3)", async (req, res, next) => {
+  try {
+    res.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+    const id = parseInt(req.params.id);
+    const field = req.params.field as "version1" | "version2" | "version3";
+    const product = await storage.getProductById(id);
+    if (!product || !product[field]) {
+      return res.status(404).json({ message: "Imagem não encontrada" });
+    }
+
+    const imageData = product[field];
+
+    // Detect circular reference
+    if (imageData.includes(`/api/products/${id}/${field}`)) {
+      return res.status(404).json({ message: "Imagem não configurada corretamente - favor reupar a imagem" });
+    }
+
+    if (imageData.startsWith("data:")) {
+      const matches = imageData.match(/^data:(.+);base64,(.+)$/);
+      if (matches) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, "base64");
+        res.set("Content-Type", mimeType);
+        return res.send(buffer);
+      }
+    }
+
+    return res.redirect(imageData);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.get("/api/products/:id", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const product = await storage.getProductById(id);
+    if (!product) {
+      return res.status(404).json({ message: "Produto não encontrado" });
+    }
+    return res.json(product);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.post("/api/products", requireAdmin, async (req, res, next) => {
+  try {
+    const data = insertProductSchema.parse(req.body);
+    const product = await storage.createProduct(data);
+
+    // ✅ invalida cache de /api/products
+    invalidateProductsCache();
+
+    const cacheBuster = `?v=${Date.now()}`;
+    return res.status(201).json(stripBase64ImagesFromProduct(product, cacheBuster));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Clone product to Noivas category
+app.post("/api/products/:id/clone-noivas", requireAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const original = await storage.getProductById(id);
+    if (!original) {
+      return res.status(404).json({ message: "Produto não encontrado" });
+    }
+
+    // Find Noivas category
+    const noivasCategory = await storage.getCategoryBySlug("noivas");
+    if (!noivasCategory) {
+      return res.status(400).json({ message: "Categoria Noivas não encontrada" });
+    }
+
+    // Clone product with Noivas category
+    const cloneData = {
+      name: `${original.name} - Noivas`,
+      price: original.price,
+      description: original.description,
+      image: original.image,
+      imageColor: original.imageColor,
+      gallery: original.gallery,
+      video: original.video,
+      video2: original.video2,
+      version1: original.version1,
+      version2: original.version2,
+      version3: original.version3,
+      categoryId: noivasCategory.id,
+      collectionId: original.collectionId,
+      specs: original.specs,
+      bestsellerOrder: null,
+      isNew: original.isNew,
+      priceDiamondSynthetic: original.priceDiamondSynthetic,
+      priceZirconia: original.priceZirconia,
+      descriptionDiamondSynthetic: original.descriptionDiamondSynthetic,
+      descriptionZirconia: original.descriptionZirconia,
+      specsDiamondSynthetic: original.specsDiamondSynthetic,
+      specsZirconia: original.specsZirconia,
+      mainStoneName: original.mainStoneName,
+      stoneVariations: original.stoneVariations,
+    };
+
+    const clonedProduct = await storage.createProduct(cloneData);
+
+    // ✅ invalida cache de /api/products
+    invalidateProductsCache();
+
+    const cacheBuster = `?v=${Date.now()}`;
+    return res.status(201).json(stripBase64ImagesFromProduct(clonedProduct, cacheBuster));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.patch("/api/products/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const product = await storage.updateProduct(id, req.body);
+    if (!product) {
+      return res.status(404).json({ message: "Produto não encontrado" });
+    }
+
+    // ✅ invalida cache de /api/products
+    invalidateProductsCache();
+
+    const cacheBuster = `?v=${Date.now()}`;
+    return res.json(stripBase64ImagesFromProduct(product, cacheBuster));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.delete("/api/products/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    await storage.deleteProduct(id);
+
+    // ✅ invalida cache de /api/products
+    invalidateProductsCache();
+
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+});
 
   // ============ JOURNAL POSTS ROUTES ============
   
