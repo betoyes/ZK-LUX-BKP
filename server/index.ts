@@ -18,7 +18,7 @@ app.use(
       ? { maxAge: 31536000, includeSubDomains: true }
       : false,
     // Prevent clickjacking
-    frameguard: { action: "deny" },
+    frameguard: false,
     // Prevent MIME type sniffing
     noSniff: true,
     // Referrer policy for privacy
