@@ -1,7 +1,7 @@
-import heroImage from '@assets/generated_images/luxury_jewelry_hero_image_with_model.png';
-import ringImage from '@assets/generated_images/diamond_ring_product_shot.png';
-import necklaceImage from '@assets/generated_images/gold_necklace_product_shot.png';
-import earringsImage from '@assets/generated_images/pearl_earrings_product_shot.png';
+import heroImage from '@assets/generated_images/luxury_jewelry_hero_image_with_model.webp';
+import ringImage from '@assets/generated_images/diamond_ring_product_shot.webp';
+import necklaceImage from '@assets/generated_images/gold_necklace_product_shot.webp';
+import earringsImage from '@assets/generated_images/pearl_earrings_product_shot.webp';
 
 export interface Product {
   id: number;

@@ -5,8 +5,9 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { motion } from 'framer-motion';
-import { ArrowRight, Heart, ChevronDown, Sparkles } from 'lucide-react';
+import { ArrowRight, Heart, ChevronDown, Sparkles, SlidersHorizontal } from 'lucide-react';
 import StoneSelector, { hasStoneVariations, getStonePrice } from '@/components/StoneSelector';
 import { filterVisibleCategories } from '@/lib/categoryVisibility';
 
@@ -25,6 +26,7 @@ export default function Shop() {
   const [sortOption, setSortOption] = useState('newest');
   const [selectedStoneTypes, setSelectedStoneTypes] = useState<Record<number, string>>({});
   const [showNoivasSection, setShowNoivasSection] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   // Check if "Noivas" filter is active
   const isNoivasActive = selectedCategories.includes('noivas');
@@ -124,16 +126,122 @@ export default function Shop() {
             <div className="font-mono text-xs mb-2" data-testid="product-count">
               {filteredProducts.length} ITENS
             </div>
-            <Select value={sortOption} onValueChange={setSortOption}>
-              <SelectTrigger className="w-[180px] rounded-none border-black">
-                <SelectValue placeholder="Ordenar por" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Mais Recentes</SelectItem>
-                <SelectItem value="price-asc">Menor Preço</SelectItem>
-                <SelectItem value="price-desc">Maior Preço</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-3">
+              {/* Mobile Filter Button */}
+              <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="lg:hidden rounded-none border-black flex items-center gap-2">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Filtros
+                    {(selectedCategories.length > 0 || selectedCollections.length > 0) && (
+                      <span className="bg-black text-white text-xs px-1.5 py-0.5 rounded-full">
+                        {selectedCategories.length + selectedCollections.length}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full sm:w-[350px] overflow-y-auto">
+                  <SheetTitle className="font-display text-2xl mb-6">Filtros</SheetTitle>
+                  
+                  {/* Mobile Filters Content */}
+                  <div className="space-y-8">
+                    {/* Categories */}
+                    <div>
+                      <h3 className="font-mono text-xs uppercase tracking-widest mb-4 text-muted-foreground">Categorias</h3>
+                      <div className="space-y-3">
+                        <div className={`flex items-center space-x-3 p-2 -mx-2 rounded transition-colors ${isNoivasActive ? 'bg-rose-100' : 'hover:bg-rose-50'}`}>
+                          <Checkbox 
+                            id="mobile-cat-noivas"
+                            checked={isNoivasActive}
+                            onCheckedChange={() => {
+                              toggleCategory('noivas');
+                              setShowNoivasSection(!isNoivasActive);
+                            }}
+                            className="rounded-none border-rose-300 data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500"
+                          />
+                          <label htmlFor="mobile-cat-noivas" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-rose-400" />
+                            Noivas
+                          </label>
+                        </div>
+                        <div className="border-b border-border my-2" />
+                        {visibleCategories.filter(cat => cat.slug !== 'noivas' && cat.name?.toLowerCase() !== 'noivas').map(cat => (
+                          <div key={cat.id} className="flex items-center space-x-3">
+                            <Checkbox 
+                              id={`mobile-cat-${cat.id}`} 
+                              checked={selectedCategories.includes(cat.slug || String(cat.id))}
+                              onCheckedChange={() => toggleCategory(cat.slug || String(cat.id))}
+                              className="rounded-none"
+                            />
+                            <label htmlFor={`mobile-cat-${cat.id}`} className="text-sm font-medium cursor-pointer capitalize">
+                              {cat.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Collections */}
+                    <div>
+                      <h3 className="font-mono text-xs uppercase tracking-widest mb-4 text-muted-foreground">Coleções</h3>
+                      <div className="space-y-3">
+                        {collections.map(col => (
+                          <div key={col.id} className="flex items-center space-x-3">
+                            <Checkbox 
+                              id={`mobile-col-${col.id}`} 
+                              checked={selectedCollections.includes(String(col.id))}
+                              onCheckedChange={() => toggleCollection(String(col.id))}
+                              className="rounded-none"
+                            />
+                            <label htmlFor={`mobile-col-${col.id}`} className="text-sm font-medium cursor-pointer">
+                              {col.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Price Filter */}
+                    <div>
+                      <h3 className="font-mono text-xs uppercase tracking-widest mb-4 text-muted-foreground">Faixa de Preço</h3>
+                      <div className="space-y-4">
+                        <Slider 
+                          defaultValue={[0, 500000]} 
+                          max={500000} 
+                          step={1000}
+                          value={priceRange}
+                          onValueChange={setPriceRange}
+                          className="py-4"
+                        />
+                        <div className="flex justify-between font-mono text-xs">
+                          <span>R$ {priceRange[0].toLocaleString()}</span>
+                          <span>R$ {priceRange[1].toLocaleString()}+</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Apply Button */}
+                    <Button 
+                      className="w-full rounded-none"
+                      onClick={() => setIsFilterOpen(false)}
+                    >
+                      Aplicar Filtros
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="w-[140px] sm:w-[180px] rounded-none border-black">
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Mais Recentes</SelectItem>
+                  <SelectItem value="price-asc">Menor Preço</SelectItem>
+                  <SelectItem value="price-desc">Maior Preço</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -233,8 +341,8 @@ export default function Shop() {
         )}
 
         <div className="flex flex-col lg:flex-row gap-16">
-          {/* Sidebar Filters */}
-          <div className="w-full lg:w-64 space-y-12 sticky top-32 h-fit bg-background z-10">
+          {/* Sidebar Filters - Hidden on mobile, visible on desktop */}
+          <div className="hidden lg:block w-64 space-y-12 sticky top-32 h-fit bg-background z-10">
             {/* Categories */}
             <div>
               <h3 className="font-mono text-xs uppercase tracking-widest mb-6 text-muted-foreground">Categorias</h3>
@@ -262,7 +370,7 @@ export default function Shop() {
                 {/* Separator */}
                 <div className="border-b border-border my-2" />
                 
-                {visibleCategories.map(cat => (
+                {visibleCategories.filter(cat => cat.slug !== 'noivas' && cat.name?.toLowerCase() !== 'noivas').map(cat => (
                   <div key={cat.id} className="flex items-center space-x-3">
                     <Checkbox 
                       id={`cat-${cat.id}`} 
@@ -417,7 +525,7 @@ export default function Shop() {
                       <div className="flex justify-between items-start border-b border-border pb-2 group-hover:border-black transition-colors">
                         <div>
                           <h3 className="font-display text-xl leading-none mb-2 group-hover:underline underline-offset-4 decoration-1">{product.name}</h3>
-                          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{collections.find(c => c.id === product.collectionId)?.name || ''}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest">{collections.find(c => c.id === product.collectionId)?.name || ''}</span>
                         </div>
                         <p className="font-mono text-sm">R$ {(getProductPrice(product) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                       </div>

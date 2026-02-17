@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -6,50 +6,195 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle2, CreditCard, Truck, Loader2, MessageCircle } from 'lucide-react';
+import { CheckCircle2, CreditCard, Truck, Loader2, MessageCircle, QrCode, Copy, Check, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { maskCep, isValidCep, calculateShipping, formatCurrency, type ShippingResult } from '@/lib/cep';
 import { WhatsAppLink } from '@/components/WhatsAppButton';
+import { useProducts } from '@/context/ProductContext';
 
-const formSchema = z.object({
+const customerSchema = z.object({
   email: z.string().email("Email inválido"),
   firstName: z.string().min(2, "Nome é obrigatório"),
   lastName: z.string().min(2, "Sobrenome é obrigatório"),
+  cpfCnpj: z.string().min(11, "CPF inválido").max(18, "CPF/CNPJ inválido"),
+  phone: z.string().min(10, "Telefone inválido"),
   address: z.string().min(5, "Endereço inválido"),
+  addressNumber: z.string().min(1, "Número é obrigatório"),
+  addressComplement: z.string().optional(),
   city: z.string().min(2, "Cidade obrigatória"),
   zip: z.string().refine((val) => isValidCep(val), {
     message: "CEP inválido (formato: 00000-000)",
   }),
-  cardNumber: z.string().min(16, "Número do cartão inválido"),
-  expiry: z.string().min(5, "Data inválida"),
-  cvc: z.string().min(3, "CVC inválido"),
 });
 
+const creditCardSchema = z.object({
+  cardNumber: z.string().min(13, "Número do cartão inválido").max(19, "Número do cartão inválido"),
+  holderName: z.string().min(2, "Nome no cartão é obrigatório"),
+  expiry: z.string()
+    .regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Data inválida (formato: MM/AA)")
+    .refine((val) => {
+      const [month, year] = val.split('/');
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear() % 100;
+      const currentMonth = currentDate.getMonth() + 1;
+      const expiryYear = parseInt(year, 10);
+      const expiryMonth = parseInt(month, 10);
+      if (expiryYear < currentYear) return false;
+      if (expiryYear === currentYear && expiryMonth < currentMonth) return false;
+      return true;
+    }, "Cartão expirado"),
+  cvc: z.string().min(3, "CVC inválido").max(4, "CVC inválido").regex(/^\d{3,4}$/, "CVC inválido"),
+});
+
+type CustomerData = z.infer<typeof customerSchema>;
+type CreditCardData = z.infer<typeof creditCardSchema>;
+
+type PaymentMethod = 'pix' | 'credit_card';
+type CheckoutStep = 'info' | 'payment' | 'pix_waiting' | 'success';
+
+interface PixPaymentData {
+  paymentId: number;
+  qrCodeImage: string;
+  qrCodePayload: string;
+  expirationDate: string;
+}
+
+function maskCpfCnpj(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+function maskPhone(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length <= 10) {
+    return digits
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+}
+
+function maskCardNumber(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits.replace(/(\d{4})/g, '$1 ').trim();
+}
+
+function maskExpiry(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length >= 2) {
+    return digits.slice(0, 2) + '/' + digits.slice(2, 4);
+  }
+  return digits;
+}
+
+// Taxa de juros mensal para parcelamento (2.99% ao mês - padrão do mercado)
+const MONTHLY_INTEREST_RATE = 0.0299;
+
+// Calcula o valor da parcela usando a Tabela Price (juros compostos)
+function calculateInstallmentWithInterest(principal: number, installments: number): { installmentValue: number; totalWithInterest: number } {
+  if (installments === 1) {
+    return { installmentValue: principal, totalWithInterest: principal };
+  }
+  
+  const r = MONTHLY_INTEREST_RATE;
+  const n = installments;
+  
+  // Fórmula da Tabela Price: PMT = PV × [r × (1 + r)^n] / [(1 + r)^n - 1]
+  const factor = Math.pow(1 + r, n);
+  const installmentValue = principal * (r * factor) / (factor - 1);
+  const totalWithInterest = installmentValue * n;
+  
+  return { 
+    installmentValue: Math.round(installmentValue), // Arredonda para centavos inteiros
+    totalWithInterest: Math.round(totalWithInterest)
+  };
+}
+
 export default function Checkout() {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<CheckoutStep>('info');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [shipping, setShipping] = useState<ShippingResult | null>(null);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [pixData, setPixData] = useState<PixPaymentData | null>(null);
+  const [copiedPayload, setCopiedPayload] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState<{ configured: boolean; sandbox: boolean } | null>(null);
+  const [customerData, setCustomerData] = useState<CustomerData | null>(null);
+  const [installments, setInstallments] = useState(1);
   const { toast } = useToast();
+  const { cart, products, clearCart } = useProducts();
 
-  const subtotal = 1630000;
+  const cartItems = useMemo(() => {
+    return cart.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      if (!product) return null;
+      return {
+        ...item,
+        product,
+        price: product.price,
+        name: product.name,
+      };
+    }).filter(Boolean) as Array<{
+      productId: number;
+      quantity: number;
+      stoneType?: string;
+      product: typeof products[0];
+      price: number;
+      name: string;
+    }>;
+  }, [cart, products]);
+
+  const subtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  }, [cartItems]);
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const customerForm = useForm<CustomerData>({
+    resolver: zodResolver(customerSchema),
     defaultValues: {
       email: "",
       firstName: "",
       lastName: "",
+      cpfCnpj: "",
+      phone: "",
       address: "",
+      addressNumber: "",
+      addressComplement: "",
       city: "",
       zip: "",
+    },
+  });
+
+  const cardForm = useForm<CreditCardData>({
+    resolver: zodResolver(creditCardSchema),
+    defaultValues: {
       cardNumber: "",
+      holderName: "",
       expiry: "",
       cvc: "",
     },
   });
 
-  const zipValue = form.watch('zip');
+  const zipValue = customerForm.watch('zip');
+
+  useEffect(() => {
+    fetch('/api/payments/config')
+      .then(res => res.json())
+      .then(data => setPaymentConfig(data))
+      .catch(() => setPaymentConfig({ configured: false, sandbox: true }));
+  }, []);
 
   useEffect(() => {
     if (isValidCep(zipValue)) {
@@ -70,7 +215,27 @@ export default function Checkout() {
     onChange(masked);
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  const handleCpfCnpjChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: (value: string) => void) => {
+    const masked = maskCpfCnpj(e.target.value);
+    onChange(masked);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: (value: string) => void) => {
+    const masked = maskPhone(e.target.value);
+    onChange(masked);
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: (value: string) => void) => {
+    const masked = maskCardNumber(e.target.value);
+    onChange(masked);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>, onChange: (value: string) => void) => {
+    const masked = maskExpiry(e.target.value);
+    onChange(masked);
+  };
+
+  async function onCustomerSubmit(values: CustomerData) {
     if (!shipping) {
       toast({
         title: "CEP inválido",
@@ -80,16 +245,189 @@ export default function Checkout() {
       return;
     }
 
-    setTimeout(() => {
-      setStep(2);
-      toast({
-        title: "Pedido confirmado!",
-        description: "Enviamos os detalhes para o seu email.",
-      });
-    }, 1500);
+    setCustomerData(values);
+    setStep('payment');
   }
 
-  if (step === 2) {
+  async function processPixPayment() {
+    if (!customerData) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/payments/pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: customerData.email,
+          name: `${customerData.firstName} ${customerData.lastName}`,
+          cpfCnpj: customerData.cpfCnpj.replace(/\D/g, ''),
+          phone: customerData.phone.replace(/\D/g, ''),
+          value: subtotal + (shipping?.price || 0),
+          description: 'Compra na joalheria',
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao criar pagamento PIX');
+      }
+
+      setPixData({
+        paymentId: data.paymentId,
+        qrCodeImage: data.qrCodeImage,
+        qrCodePayload: data.qrCodePayload,
+        expirationDate: data.expirationDate,
+      });
+      setStep('pix_waiting');
+    } catch (error: any) {
+      toast({
+        title: "Erro no pagamento",
+        description: error.message || "Não foi possível gerar o pagamento PIX",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  async function processCreditCardPayment(cardData: CreditCardData) {
+    if (!customerData || !shipping) return;
+
+    setIsProcessing(true);
+    try {
+      const [expiryMonth, expiryYear] = cardData.expiry.split('/');
+      const fullYear = expiryYear.length === 2 ? `20${expiryYear}` : expiryYear;
+
+      const response = await fetch('/api/payments/credit-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: customerData.email,
+          name: `${customerData.firstName} ${customerData.lastName}`,
+          cpfCnpj: customerData.cpfCnpj.replace(/\D/g, ''),
+          phone: customerData.phone.replace(/\D/g, ''),
+          value: subtotal + shipping.price,
+          description: 'Compra na joalheria',
+          postalCode: customerData.zip.replace(/\D/g, ''),
+          addressNumber: customerData.addressNumber,
+          addressComplement: customerData.addressComplement,
+          creditCard: {
+            holderName: cardData.holderName,
+            number: cardData.cardNumber.replace(/\s/g, ''),
+            expiryMonth,
+            expiryYear: fullYear,
+            ccv: cardData.cvc,
+          },
+          installmentCount: installments,
+          installmentValue: installments > 1 
+            ? calculateInstallmentWithInterest(subtotal + shipping.price, installments).installmentValue 
+            : undefined,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao processar pagamento');
+      }
+
+      if (data.status === 'CONFIRMED' || data.status === 'RECEIVED') {
+        clearCart();
+        setStep('success');
+        toast({
+          title: "Pagamento confirmado!",
+          description: "Seu pedido foi processado com sucesso.",
+        });
+      } else {
+        toast({
+          title: "Pagamento em análise",
+          description: "Seu pagamento está sendo processado. Você receberá uma confirmação em breve.",
+        });
+        clearCart();
+        setStep('success');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro no pagamento",
+        description: error.message || "Não foi possível processar o pagamento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  async function copyPixPayload() {
+    if (pixData?.qrCodePayload) {
+      await navigator.clipboard.writeText(pixData.qrCodePayload);
+      setCopiedPayload(true);
+      toast({
+        title: "Código copiado!",
+        description: "Cole o código no seu app de pagamento",
+      });
+      setTimeout(() => setCopiedPayload(false), 3000);
+    }
+  }
+
+  async function checkPixPaymentStatus() {
+    if (!pixData) return;
+
+    try {
+      const response = await fetch(`/api/payments/${pixData.paymentId}/status`);
+      const data = await response.json();
+
+      if (data.status === 'RECEIVED' || data.status === 'CONFIRMED') {
+        clearCart();
+        setStep('success');
+        toast({
+          title: "Pagamento confirmado!",
+          description: "Seu pedido foi processado com sucesso.",
+        });
+      } else {
+        toast({
+          title: "Aguardando pagamento",
+          description: "O pagamento ainda não foi identificado. Tente novamente em alguns instantes.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível verificar o status do pagamento",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function simulateSandboxPayment() {
+    if (!pixData || !paymentConfig?.sandbox) return;
+
+    try {
+      const response = await fetch(`/api/payments/${pixData.paymentId}/simulate-payment`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        clearCart();
+        setStep('success');
+        toast({
+          title: "Pagamento simulado!",
+          description: "O pagamento foi confirmado (ambiente de testes)",
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível simular o pagamento",
+        variant: "destructive",
+      });
+    }
+  }
+
+  if (step === 'success') {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center px-4 pt-20">
         <motion.div 
@@ -101,11 +439,361 @@ export default function Checkout() {
         </motion.div>
         <h1 className="font-serif text-4xl mb-4">Obrigado pela sua compra!</h1>
         <p className="text-muted-foreground mb-8 max-w-md">
-          Seu pedido #ZK-8921 foi confirmado. Você receberá um email com os detalhes de rastreamento assim que o envio for processado.
+          Seu pedido foi confirmado. Você receberá um email com os detalhes de rastreamento assim que o envio for processado.
         </p>
         <Link href="/">
-          <Button className="rounded-none uppercase tracking-widest px-8">Voltar para Home</Button>
+          <Button className="rounded-none uppercase tracking-widest px-8" data-testid="button-back-home">
+            Voltar para Home
+          </Button>
         </Link>
+      </div>
+    );
+  }
+
+  if (step === 'pix_waiting' && pixData) {
+    return (
+      <div className="min-h-screen bg-background pt-32 pb-24">
+        <div className="container mx-auto px-4 max-w-lg">
+          <h1 className="font-serif text-3xl mb-8 text-center">Pagamento via PIX</h1>
+          
+          <div className="bg-white border border-border p-8 text-center">
+            <div className="mb-6">
+              <QrCode className="h-12 w-12 mx-auto text-primary mb-4" />
+              <h2 className="font-serif text-xl mb-2">Escaneie o QR Code</h2>
+              <p className="text-sm text-muted-foreground">
+                Use o app do seu banco para escanear o código abaixo
+              </p>
+            </div>
+
+            <div className="bg-gray-50 p-4 mb-6 rounded-lg">
+              <img 
+                src={`data:image/png;base64,${pixData.qrCodeImage}`}
+                alt="QR Code PIX"
+                className="mx-auto max-w-[250px]"
+                data-testid="img-pix-qrcode"
+              />
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-muted-foreground mb-2">Ou copie o código PIX:</p>
+              <div className="flex gap-2">
+                <Input 
+                  value={pixData.qrCodePayload}
+                  readOnly
+                  className="text-xs font-mono"
+                  data-testid="input-pix-payload"
+                />
+                <Button 
+                  onClick={copyPixPayload}
+                  variant="outline"
+                  className="shrink-0"
+                  data-testid="button-copy-pix"
+                >
+                  {copiedPayload ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={checkPixPaymentStatus}
+                className="w-full rounded-none"
+                data-testid="button-check-payment"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Já paguei - Verificar
+              </Button>
+
+              {paymentConfig?.sandbox && (
+                <Button 
+                  onClick={simulateSandboxPayment}
+                  variant="outline"
+                  className="w-full rounded-none text-green-600 border-green-600 hover:bg-green-50"
+                  data-testid="button-simulate-payment"
+                >
+                  Simular Pagamento (Sandbox)
+                </Button>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-6">
+              O QR Code expira em 24 horas. Após o pagamento, a confirmação pode levar alguns segundos.
+            </p>
+          </div>
+
+          <Button 
+            variant="ghost"
+            onClick={() => setStep('payment')}
+            className="w-full mt-4"
+            data-testid="button-back-payment"
+          >
+            Voltar e escolher outro método
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'payment') {
+    return (
+      <div className="min-h-screen bg-background pt-32 pb-24">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <h1 className="font-serif text-3xl mb-12 text-center">Pagamento Seguro</h1>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="md:col-span-2">
+              <div className="space-y-4 mb-8">
+                <h3 className="font-serif text-xl">Método de Pagamento</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('pix')}
+                    className={`p-4 border-2 rounded-lg text-center transition-all ${
+                      paymentMethod === 'pix' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    data-testid="button-select-pix"
+                  >
+                    <QrCode className="h-8 w-8 mx-auto mb-2" />
+                    <span className="font-medium">PIX</span>
+                    <p className="text-xs text-muted-foreground mt-1">Pagamento instantâneo</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('credit_card')}
+                    className={`p-4 border-2 rounded-lg text-center transition-all ${
+                      paymentMethod === 'credit_card' 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    data-testid="button-select-credit-card"
+                  >
+                    <CreditCard className="h-8 w-8 mx-auto mb-2" />
+                    <span className="font-medium">Cartão de Crédito</span>
+                    <p className="text-xs text-muted-foreground mt-1">Até 12x sem juros</p>
+                  </button>
+                </div>
+              </div>
+
+              {paymentMethod === 'pix' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                  <h4 className="font-medium text-blue-800 mb-2">Pagamento via PIX</h4>
+                  <p className="text-sm text-blue-700">
+                    Ao confirmar, você receberá um QR Code para realizar o pagamento pelo app do seu banco.
+                    A confirmação é instantânea!
+                  </p>
+                </div>
+              )}
+
+              {paymentMethod === 'credit_card' && (
+                <Form {...cardForm}>
+                  <form onSubmit={cardForm.handleSubmit(processCreditCardPayment)} className="space-y-4">
+                    <FormField
+                      control={cardForm.control}
+                      name="cardNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número do Cartão</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="0000 0000 0000 0000"
+                              value={field.value}
+                              onChange={(e) => handleCardNumberChange(e, field.onChange)}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                              maxLength={19}
+                              className="bg-white" 
+                              data-testid="input-cardnumber"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={cardForm.control}
+                      name="holderName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome no Cartão</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="NOME COMO ESTÁ NO CARTÃO"
+                              {...field}
+                              className="bg-white uppercase" 
+                              data-testid="input-holdername"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={cardForm.control}
+                        name="expiry"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Validade</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="MM/AA"
+                                value={field.value}
+                                onChange={(e) => handleExpiryChange(e, field.onChange)}
+                                onBlur={field.onBlur}
+                                name={field.name}
+                                ref={field.ref}
+                                maxLength={5}
+                                className="bg-white" 
+                                data-testid="input-expiry"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={cardForm.control}
+                        name="cvc"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CVC</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="123"
+                                {...field}
+                                maxLength={4}
+                                className="bg-white" 
+                                data-testid="input-cvc"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium mb-2">Parcelas</label>
+                      <select
+                        value={installments}
+                        onChange={(e) => setInstallments(parseInt(e.target.value))}
+                        className="w-full h-10 px-3 border border-input bg-white rounded-md text-sm"
+                        data-testid="select-installments"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
+                          const total = subtotal + (shipping?.price || 0);
+                          const { installmentValue, totalWithInterest } = calculateInstallmentWithInterest(total, n);
+                          return (
+                            <option key={n} value={n}>
+                              {n}x de {formatCurrency(installmentValue)}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      {installments > 1 && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Taxa de {(MONTHLY_INTEREST_RATE * 100).toFixed(2)}% a.m.
+                        </p>
+                      )}
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      className="w-full rounded-none h-12 bg-black text-white hover:bg-primary uppercase tracking-widest mt-8"
+                      disabled={isProcessing}
+                      data-testid="button-pay-credit-card"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        `Pagar ${formatCurrency(subtotal + (shipping?.price || 0))}`
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              )}
+
+              {paymentMethod === 'pix' && (
+                <Button 
+                  onClick={processPixPayment}
+                  className="w-full rounded-none h-12 bg-black text-white hover:bg-primary uppercase tracking-widest"
+                  disabled={isProcessing}
+                  data-testid="button-generate-pix"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Gerando PIX...
+                    </>
+                  ) : (
+                    'Gerar QR Code PIX'
+                  )}
+                </Button>
+              )}
+
+              <Button 
+                variant="ghost"
+                onClick={() => setStep('info')}
+                className="w-full mt-4"
+                data-testid="button-back-info"
+              >
+                Voltar para dados de envio
+              </Button>
+            </div>
+
+            <div>
+              <div className="bg-secondary/20 p-8 sticky top-32">
+                <h3 className="font-serif text-lg mb-6">Resumo</h3>
+                <div className="space-y-4 text-sm border-b border-border pb-6 mb-6">
+                  {cartItems.length > 0 ? (
+                    cartItems.map((item, index) => (
+                      <div key={`${item.productId}-${item.stoneType || ''}-${index}`} className="flex justify-between" data-testid={`cart-item-${item.productId}`}>
+                        <span>{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}</span>
+                        <span>{formatCurrency(item.price * item.quantity)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center">Carrinho vazio</p>
+                  )}
+                </div>
+                
+                <div className="space-y-3 text-sm border-b border-border pb-6 mb-6">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span data-testid="text-subtotal">{formatCurrency(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Frete</span>
+                    <span data-testid="text-summary-shipping">
+                      {shipping ? formatCurrency(shipping.price) : 'Calculando...'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between font-medium text-lg">
+                  <span>Total</span>
+                  <span data-testid="text-total">{formatCurrency(subtotal + (shipping?.price || 0))}</span>
+                </div>
+
+                {shipping && (
+                  <p className="text-xs text-muted-foreground mt-4" data-testid="text-delivery-estimate">
+                    Entrega estimada: {shipping.daysMin}-{shipping.daysMax} dias úteis
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -117,17 +805,31 @@ export default function Checkout() {
       <div className="container mx-auto px-4 max-w-4xl">
         <h1 className="font-serif text-3xl mb-12 text-center">Checkout Seguro</h1>
 
+        {paymentConfig?.sandbox && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8 text-center">
+            <p className="text-sm text-yellow-800">
+              <strong>Ambiente de Testes (Sandbox)</strong> - Os pagamentos não são reais
+            </p>
+          </div>
+        )}
+
+        {!paymentConfig?.configured && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 text-center">
+            <p className="text-sm text-red-800">
+              <strong>Sistema de pagamento não configurado</strong> - Configure a chave API do Asaas
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {/* Form */}
           <div className="md:col-span-2">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Form {...customerForm}>
+              <form onSubmit={customerForm.handleSubmit(onCustomerSubmit)} className="space-y-8">
                 
-                {/* Contact & Shipping */}
                 <div className="space-y-4">
-                  <h3 className="font-serif text-xl mb-4">1. Informações de Envio</h3>
+                  <h3 className="font-serif text-xl mb-4">1. Informações Pessoais</h3>
                   <FormField
-                    control={form.control}
+                    control={customerForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -136,6 +838,7 @@ export default function Checkout() {
                           <Input 
                             placeholder="seu@email.com" 
                             {...field} 
+                            autoComplete="email"
                             className="bg-white" 
                             data-testid="input-email"
                           />
@@ -146,7 +849,7 @@ export default function Checkout() {
                   />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={customerForm.control}
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
@@ -155,6 +858,7 @@ export default function Checkout() {
                             <Input 
                               placeholder="Maria" 
                               {...field} 
+                              autoComplete="given-name"
                               className="bg-white" 
                               data-testid="input-firstname"
                             />
@@ -164,7 +868,7 @@ export default function Checkout() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={customerForm.control}
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
@@ -173,6 +877,7 @@ export default function Checkout() {
                             <Input 
                               placeholder="Silva" 
                               {...field} 
+                              autoComplete="family-name"
                               className="bg-white" 
                               data-testid="input-lastname"
                             />
@@ -182,16 +887,71 @@ export default function Checkout() {
                       )}
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={customerForm.control}
+                      name="cpfCnpj"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CPF/CNPJ</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="000.000.000-00"
+                              value={field.value}
+                              onChange={(e) => handleCpfCnpjChange(e, field.onChange)}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                              autoComplete="off"
+                              className="bg-white" 
+                              data-testid="input-cpf"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={customerForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Telefone</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="(11) 99999-9999"
+                              value={field.value}
+                              onChange={(e) => handlePhoneChange(e, field.onChange)}
+                              onBlur={field.onBlur}
+                              name={field.name}
+                              ref={field.ref}
+                              autoComplete="tel"
+                              className="bg-white" 
+                              data-testid="input-phone"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-8 border-t border-border">
+                  <h3 className="font-serif text-xl mb-4 flex items-center gap-2">
+                    2. Endereço de Envio <Truck className="h-5 w-5 text-muted-foreground" />
+                  </h3>
                   <FormField
-                    control={form.control}
+                    control={customerForm.control}
                     name="address"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Endereço</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="Rua das Flores, 123" 
+                            placeholder="Rua das Flores" 
                             {...field} 
+                            autoComplete="street-address"
                             className="bg-white" 
                             data-testid="input-address"
                           />
@@ -200,9 +960,47 @@ export default function Checkout() {
                       </FormItem>
                     )}
                   />
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={customerForm.control}
+                      name="addressNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="123" 
+                              {...field} 
+                              className="bg-white" 
+                              data-testid="input-addressnumber"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={customerForm.control}
+                      name="addressComplement"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Complemento</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Apto 101" 
+                              {...field} 
+                              className="bg-white" 
+                              data-testid="input-complement"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
+                      control={customerForm.control}
                       name="city"
                       render={({ field }) => (
                         <FormItem>
@@ -211,6 +1009,7 @@ export default function Checkout() {
                             <Input 
                               placeholder="São Paulo" 
                               {...field} 
+                              autoComplete="address-level2"
                               className="bg-white" 
                               data-testid="input-city"
                             />
@@ -220,7 +1019,7 @@ export default function Checkout() {
                       )}
                     />
                     <FormField
-                      control={form.control}
+                      control={customerForm.control}
                       name="zip"
                       render={({ field }) => (
                         <FormItem>
@@ -233,6 +1032,7 @@ export default function Checkout() {
                               onBlur={field.onBlur}
                               name={field.name}
                               ref={field.ref}
+                              autoComplete="postal-code"
                               className="bg-white" 
                               data-testid="input-cep"
                             />
@@ -243,7 +1043,6 @@ export default function Checkout() {
                     />
                   </div>
 
-                  {/* Shipping Result */}
                   {isCalculatingShipping && (
                     <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -271,93 +1070,32 @@ export default function Checkout() {
                   )}
                 </div>
 
-                {/* Payment */}
-                <div className="space-y-4 pt-8 border-t border-border">
-                  <h3 className="font-serif text-xl mb-4 flex items-center gap-2">
-                    2. Pagamento <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  </h3>
-                  <FormField
-                    control={form.control}
-                    name="cardNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número do Cartão</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="0000 0000 0000 0000" 
-                            {...field} 
-                            className="bg-white" 
-                            data-testid="input-cardnumber"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="expiry"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Validade</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="MM/AA" 
-                              {...field} 
-                              className="bg-white" 
-                              data-testid="input-expiry"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="cvc"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CVC</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="123" 
-                              {...field} 
-                              className="bg-white" 
-                              data-testid="input-cvc"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
                 <Button 
                   type="submit" 
                   className="w-full rounded-none h-12 bg-black text-white hover:bg-primary uppercase tracking-widest mt-8"
-                  data-testid="button-submit-checkout"
+                  disabled={!paymentConfig?.configured}
+                  data-testid="button-continue-payment"
                 >
-                  Confirmar Pagamento
+                  Continuar para Pagamento
                 </Button>
               </form>
             </Form>
           </div>
 
-          {/* Summary */}
           <div>
              <div className="bg-secondary/20 p-8 sticky top-32">
               <h3 className="font-serif text-lg mb-6">Resumo</h3>
               <div className="space-y-4 text-sm border-b border-border pb-6 mb-6">
-                <div className="flex justify-between">
-                  <span>Anel Solitário Royal</span>
-                  <span>R$ 12.500,00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Brincos Pérola Barroca</span>
-                  <span>R$ 3.800,00</span>
-                </div>
+                {cartItems.length > 0 ? (
+                  cartItems.map((item, index) => (
+                    <div key={`${item.productId}-${item.stoneType || ''}-${index}`} className="flex justify-between" data-testid={`cart-item-${item.productId}`}>
+                      <span>{item.name}{item.quantity > 1 ? ` (x${item.quantity})` : ''}</span>
+                      <span>{formatCurrency(item.price * item.quantity)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-center">Carrinho vazio</p>
+                )}
               </div>
               
               <div className="space-y-3 text-sm border-b border-border pb-6 mb-6">

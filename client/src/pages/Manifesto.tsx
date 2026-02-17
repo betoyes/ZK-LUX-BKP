@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import claudioImg from '@assets/Claudio-01_1764351367392.png';
+import claudioImg from '@assets/Claudio-01_1764351367392.webp';
 
 export default function Manifesto() {
   return (

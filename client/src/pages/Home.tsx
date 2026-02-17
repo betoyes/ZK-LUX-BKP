@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowDown, ArrowUpRight, Play } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useProducts } from '@/context/ProductContext';
 import StoneSelector, { hasStoneVariations, getStonePrice } from '@/components/StoneSelector';
-import heroImage from '@assets/generated_images/luxury_jewelry_hero_image_with_model.png';
-import necklaceImage from '@assets/generated_images/gold_necklace_product_shot.png';
-import campaignVideo from '@assets/generated_videos/b&w_jewelry_fashion_b-roll.mp4';
+import useEmblaCarousel from 'embla-carousel-react';
+import heroImage from '@assets/generated_images/luxury_jewelry_hero_image_with_model.webp';
+import necklaceImage from '@assets/generated_images/gold_necklace_product_shot.webp';
+import campaignVideo from '@assets/generated_videos/bw_jewelry_fashion_b-roll_optimized.mp4';
 import { useToast } from '@/hooks/use-toast';
 
 import { testimonials } from '@/lib/mockData';
@@ -24,6 +25,22 @@ export default function Home() {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [selectedStoneTypes, setSelectedStoneTypes] = useState<Record<number, string>>({});
+
+  // Embla Carousel for Bestsellers
+  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+    loop: true, 
+    dragFree: true,
+    align: 'start',
+    containScroll: 'trimSnaps'
+  });
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
 
   // Get price based on selected stone type
   const getProductPrice = (product: any) => {
@@ -153,7 +170,7 @@ export default function Home() {
         </div>
         
         {/* Frase/Assinatura - Fora do mix-blend para ter cor sólida */}
-        <div className="absolute left-6 md:left-12 bottom-32 z-[60]">
+        <div className="absolute left-6 md:left-12 bottom-32 z-40">
           <div className="inline-block px-4 py-2 pl-[20px] pr-[20px] pt-[8px] pb-[8px] mt-[50px] mb-[50px] bg-[#2626267a]">
             <p className="font-mono text-sm md:text-base tracking-[0.2em] uppercase text-white font-light">Criado para atravessar histórias, não tendências.</p>
           </div>
@@ -215,11 +232,6 @@ export default function Home() {
               </DialogContent>
             </Dialog>
             
-            <Link href="/shop">
-              <Button variant="outline" className="rounded-full px-8 py-6 bg-transparent text-white border-white hover:bg-white hover:text-black font-mono text-xs tracking-widest uppercase transition-all">
-                Ver Lançamento
-              </Button>
-            </Link>
           </div>
         </div>
       </section>
@@ -274,21 +286,35 @@ export default function Home() {
           <span>Luxo</span>
         </motion.div>
       </div>
-      {/* Horizontal Product Carousel Section - Continuous Animation */}
+      {/* Horizontal Product Carousel Section - Interactive */}
       <section className="py-32 overflow-hidden">
         <div className="flex justify-between items-end px-4 md:px-12 mb-16">
           <h2 className="font-display text-4xl font-medium">Bestsellers</h2>
-          <Link href="/shop" className="font-mono text-xs uppercase tracking-widest hover:underline underline-offset-4">Ver Toda a Coleção</Link>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex gap-2">
+              <button 
+                onClick={scrollPrev}
+                className="w-10 h-10 border border-border rounded-full flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
+                aria-label="Anterior"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button 
+                onClick={scrollNext}
+                className="w-10 h-10 border border-border rounded-full flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
+                aria-label="Próximo"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+            <Link href="/shop" className="font-mono text-xs uppercase tracking-widest hover:underline underline-offset-4">Ver Toda a Coleção</Link>
+          </div>
         </div>
 
-        <div className="overflow-hidden">
-          <motion.div 
-            animate={{ x: ["-50%", "0%"] }}
-            transition={{ repeat: Infinity, duration: 40, ease: "linear" }}
-            className="flex"
-          >
-            {/* Duplicate products for seamless loop */}
-            {[...(bestsellers.length > 0 ? bestsellers : (Array.isArray(products) ? products : []).slice(0, 8)), ...(bestsellers.length > 0 ? bestsellers : (Array.isArray(products) ? products : []).slice(0, 8))].map((product, idx) => {
+        <div className="overflow-hidden cursor-grab active:cursor-grabbing" ref={emblaRef}>
+          <div className="flex">
+            {/* Products carousel */}
+            {(bestsellers.length > 0 ? bestsellers : (Array.isArray(products) ? products : []).slice(0, 8)).map((product, idx) => {
               const stoneId = selectedStoneTypes[product.id] || 'main';
               const productUrl = stoneId !== 'main' ? `/product/${product.id}?stone=${stoneId}` : `/product/${product.id}`;
               return (
@@ -399,7 +425,7 @@ export default function Home() {
               </div>
             );
             })}
-          </motion.div>
+          </div>
         </div>
       </section>
       {/* Impact Phrase & Testimonials */}
@@ -425,7 +451,7 @@ export default function Home() {
                  </p>
                  <div>
                    <div className="font-display text-lg">{testimonial.name}</div>
-                   <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                   <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
                      {testimonial.role} — {testimonial.location}
                    </div>
                  </div>

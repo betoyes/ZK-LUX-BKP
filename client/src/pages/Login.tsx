@@ -170,6 +170,7 @@ export default function Login() {
                       <Input 
                         placeholder="seu@email.com" 
                         {...field} 
+                        autoComplete="email"
                         className="rounded-none border-black h-12 bg-transparent" 
                         data-testid="input-email"
                       />
@@ -189,6 +190,7 @@ export default function Login() {
                         type="password" 
                         placeholder="••••••" 
                         {...field} 
+                        autoComplete={isLogin ? "current-password" : "new-password"}
                         className="rounded-none border-black h-12 bg-transparent" 
                         data-testid="input-password"
                       />
@@ -214,6 +216,7 @@ export default function Login() {
                             type="password" 
                             placeholder="••••••" 
                             {...field} 
+                            autoComplete="new-password"
                             className="rounded-none border-black h-12 bg-transparent" 
                             data-testid="input-confirm-password"
                           />

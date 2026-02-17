@@ -10,6 +10,7 @@ import { useProducts } from '@/context/ProductContext';
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useLocation();
   const { wishlist, branding, getCartCount } = useProducts();
@@ -52,13 +53,14 @@ export function Navbar() {
             
             {/* Desktop Links - Moved here for better layout balance */}
             <div className="hidden lg:flex items-center gap-8 ml-8">
-              {['Loja', 'Lookbook', 'Noivas', 'Atelier', 'Journal', 'Manifesto'].map((item) => {
+              {['Loja', 'Lookbook', 'Noivas', 'Atelier', 'Journal', 'Manifesto', 'Contato'].map((item) => {
                 const href = item === 'Loja' ? '/shop' : 
                              item === 'Lookbook' ? '/lookbook' : 
                              item === 'Noivas' ? '/noivas' :
                              item === 'Atelier' ? '/atelier' :
                              item === 'Journal' ? '/journal' :
-                             item === 'Manifesto' ? '/manifesto' : '/about';
+                             item === 'Manifesto' ? '/manifesto' :
+                             item === 'Contato' ? '/contact' : '/about';
                 const isActive = location === href || (href === '/shop' && location.startsWith('/shop'));
                 return (
                   <Link key={item} href={href} className={`text-xs font-mono tracking-widest hover:underline underline-offset-4 uppercase ${isActive ? 'underline' : ''}`}>
@@ -75,13 +77,13 @@ export function Navbar() {
               EST. 2026
             </div>
             
-            <div className="flex items-center gap-4">
-              <button onClick={() => setIsSearchOpen(true)} className="hover:opacity-70 transition-opacity">
-                <Search className="h-4 w-4" />
+            <div className="flex items-center gap-2 md:gap-4">
+              <button onClick={() => setIsSearchOpen(true)} className="hover:opacity-70 transition-opacity p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <Search className="h-5 w-5" />
               </button>
 
-              <Link href="/wishlist" className="relative hover:opacity-70 transition-opacity">
-                <Heart className="h-4 w-4" />
+              <Link href="/wishlist" className="relative hover:opacity-70 transition-opacity p-2 -m-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <Heart className="h-5 w-5" />
                 {wishlist.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-white text-black text-[8px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
                     {wishlist.length}
@@ -91,7 +93,7 @@ export function Navbar() {
 
               <Link href="/cart">
                 <button className="hover:opacity-70 transition-opacity font-mono text-sm flex items-center gap-2" data-testid="nav-cart-link">
-                  SACOLA ({getCartCount()})
+                  MY BAG ({getCartCount()})
                 </button>
               </Link>
 
@@ -103,7 +105,7 @@ export function Navbar() {
               
               {/* Mobile Menu */}
               <div className="md:hidden">
-                <Sheet>
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-current p-0 hover:bg-transparent">
                       <Menu className="h-6 w-6" />
@@ -113,19 +115,23 @@ export function Navbar() {
                     <div className="flex flex-col h-full p-8 justify-between">
                       <div className="space-y-8 mt-20">
                         {[
-                          { name: 'Início', href: '/' },
+                          { name: 'Home', href: '/' },
                           { name: 'Loja', href: '/shop' },
                           { name: 'Lookbook', href: '/lookbook' },
                           { name: 'Noivas', href: '/noivas' },
                           { name: 'Atelier', href: '/atelier' },
                           { name: 'Journal', href: '/journal' },
                           { name: 'Manifesto', href: '/manifesto' },
-                          { name: 'Sobre', href: '/about' },
                           { name: 'Contato', href: '/contact' }
                         ].map((item) => {
                           const isActive = location === item.href || (item.href === '/shop' && location.startsWith('/shop'));
                           return (
-                            <Link key={item.name} href={item.href} className={`block font-display text-5xl md:text-6xl font-medium hover:text-white/50 transition-colors tracking-tighter ${isActive ? 'underline underline-offset-8' : ''}`}>
+                            <Link
+                              key={item.name}
+                              href={item.href}
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className={`block font-display text-5xl md:text-6xl font-medium hover:text-white/50 transition-colors tracking-tighter ${isActive ? 'underline underline-offset-8' : ''}`}
+                            >
                               {item.name}
                             </Link>
                           );

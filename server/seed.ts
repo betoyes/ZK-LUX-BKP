@@ -48,12 +48,6 @@ async function seed() {
         description: 'O brilho quente do ouro 18k.',
         image: null
       },
-      { 
-        slug: 'ocean', 
-        name: 'Ocean Pearls', 
-        description: 'Pérolas naturais de elegância atemporal.',
-        image: null
-      },
     ];
 
     for (const col of collectionsData) {
@@ -68,7 +62,6 @@ async function seed() {
     const aneis = await storage.getCategoryBySlug('aneis');
     const eternal = await storage.getCollectionBySlug('eternal');
     const aurora = await storage.getCollectionBySlug('aurora');
-    const ocean = await storage.getCollectionBySlug('ocean');
 
     // 4. Create products
     const productsData = [

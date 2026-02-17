@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Product, products as initialProducts, Category, categories as initialCategories, Collection, collections as initialCollections, Branding, initialBranding, JournalPost, initialPosts } from '@/lib/mockData';
-import ringImage from '@assets/generated_images/diamond_ring_product_shot.png';
+import ringImage from '@assets/generated_images/diamond_ring_product_shot.webp';
 
 export interface CartItem {
   productId: number;
@@ -57,8 +57,28 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<JournalPost[]>(initialPosts);
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [branding, setBranding] = useState<Branding>(initialBranding);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    // Initialize cart from localStorage
+    try {
+      const savedCart = localStorage.getItem('zkrezk_cart');
+      if (savedCart) {
+        return JSON.parse(savedCart);
+      }
+    } catch (err) {
+      console.error('Failed to load cart from localStorage:', err);
+    }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Persist cart to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('zkrezk_cart', JSON.stringify(cart));
+    } catch (err) {
+      console.error('Failed to save cart to localStorage:', err);
+    }
+  }, [cart]);
 
   // Load data from server on mount
   useEffect(() => {

@@ -5,7 +5,7 @@ import { useProducts } from '@/context/ProductContext';
 import { getStonePrice, getStoneLabel } from '@/components/StoneSelector';
 
 export default function Cart() {
-  const { products, collections, cart, updateCartQuantity, removeFromCart } = useProducts();
+  const { products, collections, cart, updateCartQuantity, removeFromCart, clearCart } = useProducts();
 
   const enrichedCartItems = cart.map(item => {
     const product = products.find(p => p.id === item.productId);
@@ -123,6 +123,15 @@ export default function Cart() {
                   Finalizar Compra <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-3 rounded-none h-12 border-black text-black hover:bg-black hover:text-white uppercase tracking-widest"
+                onClick={clearCart}
+                data-testid="clear-cart-btn"
+              >
+                Limpar Sacola
+              </Button>
             </div>
           </div>
         )}

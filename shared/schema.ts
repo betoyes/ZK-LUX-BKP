@@ -288,3 +288,76 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true });
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Asaas Customers table (stores mapping between local customers and Asaas)
+export const asaasCustomers = pgTable("asaas_customers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  email: text("email").notNull(),
+  name: text("name").notNull(),
+  cpfCnpj: text("cpf_cnpj").notNull(),
+  phone: text("phone"),
+  asaasId: text("asaas_id").notNull().unique(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertAsaasCustomerSchema = createInsertSchema(asaasCustomers).omit({ id: true });
+export type InsertAsaasCustomer = z.infer<typeof insertAsaasCustomerSchema>;
+export type AsaasCustomer = typeof asaasCustomers.$inferSelect;
+
+// Asaas Payments table (stores payment records)
+export const asaasPayments = pgTable("asaas_payments", {
+  id: serial("id").primaryKey(),
+  asaasCustomerId: integer("asaas_customer_id").references(() => asaasCustomers.id),
+  orderId: integer("order_id").references(() => orders.id),
+  asaasPaymentId: text("asaas_payment_id").notNull().unique(),
+  billingType: text("billing_type").notNull(), // 'PIX' | 'CREDIT_CARD' | 'BOLETO'
+  value: integer("value").notNull(), // in cents
+  status: text("status").notNull(), // 'PENDING', 'RECEIVED', 'CONFIRMED', etc.
+  dueDate: text("due_date").notNull(),
+  paymentDate: text("payment_date"),
+  invoiceUrl: text("invoice_url"),
+  pixQrCodeImage: text("pix_qr_code_image"),
+  pixQrCodePayload: text("pix_qr_code_payload"),
+  creditCardLastDigits: text("credit_card_last_digits"),
+  creditCardBrand: text("credit_card_brand"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at"),
+});
+
+export const insertAsaasPaymentSchema = createInsertSchema(asaasPayments).omit({ id: true });
+export type InsertAsaasPayment = z.infer<typeof insertAsaasPaymentSchema>;
+export type AsaasPayment = typeof asaasPayments.$inferSelect;
+
+// Payment request validation schemas
+export const createPixPaymentSchema = z.object({
+  email: z.string().email("Email inválido"),
+  name: z.string().min(2, "Nome é obrigatório"),
+  cpfCnpj: z.string().min(11, "CPF/CNPJ inválido"),
+  phone: z.string().optional(),
+  value: z.number().positive("Valor deve ser positivo"),
+  description: z.string().optional(),
+});
+export type CreatePixPayment = z.infer<typeof createPixPaymentSchema>;
+
+export const createCreditCardPaymentSchema = z.object({
+  email: z.string().email("Email inválido"),
+  name: z.string().min(2, "Nome é obrigatório"),
+  cpfCnpj: z.string().min(11, "CPF/CNPJ inválido"),
+  phone: z.string().optional(),
+  value: z.number().positive("Valor deve ser positivo"),
+  description: z.string().optional(),
+  postalCode: z.string().min(8, "CEP inválido"),
+  addressNumber: z.string().min(1, "Número do endereço é obrigatório"),
+  addressComplement: z.string().optional(),
+  creditCard: z.object({
+    holderName: z.string().min(2, "Nome no cartão é obrigatório"),
+    number: z.string().min(13, "Número do cartão inválido"),
+    expiryMonth: z.string().length(2, "Mês de validade inválido"),
+    expiryYear: z.string().length(4, "Ano de validade inválido"),
+    ccv: z.string().min(3, "CVC inválido"),
+  }),
+  installmentCount: z.number().min(1).max(12).optional(),
+  installmentValue: z.number().positive().optional(), // Valor de cada parcela em centavos (com juros)
+});
+export type CreateCreditCardPayment = z.infer<typeof createCreditCardPaymentSchema>;

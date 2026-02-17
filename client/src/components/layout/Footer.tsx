@@ -9,14 +9,14 @@ export function Footer() {
   return (
     <footer className="bg-background border-t border-border pt-20 pb-10">
       <div className="container mx-auto px-4 md:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-24">
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-10 md:gap-12 mb-16 md:mb-24">
           
           {/* Brand / Big Logo */}
-          <div className="md:col-span-6 flex flex-col justify-between h-full">
-            <div className="font-display text-[10vw] leading-[0.8] font-bold tracking-tighter opacity-10 select-none">
+          <div className="col-span-2 md:col-span-6 order-4 md:order-none flex flex-col justify-between h-full text-center md:text-left">
+            <div className="font-display text-5xl md:text-[10vw] leading-[0.8] font-bold tracking-tighter opacity-10 select-none">
               {branding.companyName}
             </div>
-            <div className="mt-8 max-w-sm">
+            <div className="mt-6 md:mt-8 max-w-sm mx-auto md:mx-0">
               <p className="font-mono text-xs text-muted-foreground uppercase leading-relaxed line-clamp-3">
                 {branding.manifestoText}
               </p>
@@ -24,7 +24,7 @@ export function Footer() {
           </div>
 
           {/* Links Grid */}
-          <div className="md:col-span-2">
+          <div className="col-span-1 md:col-span-2 order-1 md:order-none">
             <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Loja</h4>
             <ul className="space-y-4">
               <li><Link href="/shop" className="font-display text-xl hover:text-muted-foreground transition-colors">Ver Tudo</Link></li>
@@ -38,7 +38,7 @@ export function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="col-span-1 md:col-span-2 order-2 md:order-none">
             <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Editorial</h4>
             <ul className="space-y-4">
               <li><Link href="/journal" className="font-display text-xl hover:text-muted-foreground transition-colors">Journal</Link></li>
@@ -49,7 +49,7 @@ export function Footer() {
             </ul>
           </div>
           
-           <div className="md:col-span-2">
+           <div className="col-span-2 md:col-span-2 order-3 md:order-none">
             <h4 className="font-mono text-xs uppercase tracking-widest mb-8 text-muted-foreground">Social</h4>
             <ul className="space-y-4">
               <li><a href="#" className="font-display text-xl hover:text-muted-foreground transition-colors">LinkedIn</a></li>
@@ -60,7 +60,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4 font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+        <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4 font-mono text-[11px] text-muted-foreground uppercase tracking-widest">
           <p>&copy; 2026 {branding.companyName} JEWELRY. TODOS OS DIREITOS RESERVADOS.</p>
           <div className="flex gap-8">
             <Link href="/privacy-policy" className="hover:text-foreground">Política de Privacidade</Link>

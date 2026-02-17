@@ -1,6 +1,7 @@
 import {
   users, categories, collections, products, journalPosts, subscribers,
   customers, orders, branding, emailVerificationTokens, passwordResetTokens, auditLogs, dataExportRequests,
+  asaasCustomers, asaasPayments,
   type User, type InsertUser,
   type Category, type InsertCategory,
   type Collection, type InsertCollection,
@@ -14,6 +15,8 @@ import {
   type PasswordResetToken, type InsertPasswordResetToken,
   type InsertAuditLog,
   type DataExportRequest, type AuditLog,
+  type AsaasCustomer, type InsertAsaasCustomer,
+  type AsaasPayment, type InsertAsaasPayment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, isNotNull, asc, and, gt, gte } from "drizzle-orm";
@@ -124,6 +127,18 @@ export interface IStorage {
   }>;
   getAuditLogsByUserId(userId: number): Promise<AuditLog[]>;
   getDataExportRequestsByUserId(userId: number): Promise<DataExportRequest[]>;
+
+  // Asaas Customers
+  getAsaasCustomerByEmail(email: string): Promise<AsaasCustomer | undefined>;
+  getAsaasCustomerByAsaasId(asaasId: string): Promise<AsaasCustomer | undefined>;
+  createAsaasCustomer(customer: InsertAsaasCustomer): Promise<AsaasCustomer>;
+
+  // Asaas Payments
+  getAsaasPaymentById(id: number): Promise<AsaasPayment | undefined>;
+  getAsaasPaymentByAsaasId(asaasPaymentId: string): Promise<AsaasPayment | undefined>;
+  createAsaasPayment(payment: InsertAsaasPayment): Promise<AsaasPayment>;
+  updateAsaasPayment(id: number, payment: Partial<InsertAsaasPayment>): Promise<AsaasPayment | undefined>;
+  getAsaasPaymentsByCustomerId(asaasCustomerId: number): Promise<AsaasPayment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -644,6 +659,52 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(dataExportRequests)
       .where(eq(dataExportRequests.userId, userId))
       .orderBy(desc(dataExportRequests.requestedAt));
+  }
+
+  // Asaas Customers
+  async getAsaasCustomerByEmail(email: string): Promise<AsaasCustomer | undefined> {
+    const [customer] = await db.select().from(asaasCustomers).where(eq(asaasCustomers.email, email));
+    return customer || undefined;
+  }
+
+  async getAsaasCustomerByAsaasId(asaasId: string): Promise<AsaasCustomer | undefined> {
+    const [customer] = await db.select().from(asaasCustomers).where(eq(asaasCustomers.asaasId, asaasId));
+    return customer || undefined;
+  }
+
+  async createAsaasCustomer(customer: InsertAsaasCustomer): Promise<AsaasCustomer> {
+    const [newCustomer] = await db.insert(asaasCustomers).values(customer).returning();
+    return newCustomer;
+  }
+
+  // Asaas Payments
+  async getAsaasPaymentById(id: number): Promise<AsaasPayment | undefined> {
+    const [payment] = await db.select().from(asaasPayments).where(eq(asaasPayments.id, id));
+    return payment || undefined;
+  }
+
+  async getAsaasPaymentByAsaasId(asaasPaymentId: string): Promise<AsaasPayment | undefined> {
+    const [payment] = await db.select().from(asaasPayments).where(eq(asaasPayments.asaasPaymentId, asaasPaymentId));
+    return payment || undefined;
+  }
+
+  async createAsaasPayment(payment: InsertAsaasPayment): Promise<AsaasPayment> {
+    const [newPayment] = await db.insert(asaasPayments).values(payment).returning();
+    return newPayment;
+  }
+
+  async updateAsaasPayment(id: number, payment: Partial<InsertAsaasPayment>): Promise<AsaasPayment | undefined> {
+    const [updated] = await db.update(asaasPayments)
+      .set({ ...payment, updatedAt: new Date().toISOString() })
+      .where(eq(asaasPayments.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getAsaasPaymentsByCustomerId(asaasCustomerId: number): Promise<AsaasPayment[]> {
+    return await db.select().from(asaasPayments)
+      .where(eq(asaasPayments.asaasCustomerId, asaasCustomerId))
+      .orderBy(desc(asaasPayments.createdAt));
   }
 }
 

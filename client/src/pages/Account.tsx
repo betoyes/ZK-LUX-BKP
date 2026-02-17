@@ -123,7 +123,7 @@ export default function Account() {
                         <span className="font-mono text-xs block">28 Nov, 2026</span>
                       </div>
                       <div className="mt-4 md:mt-0">
-                        <span className="bg-black text-white px-3 py-1 font-mono text-[10px] uppercase tracking-widest">Em Processamento</span>
+                        <span className="bg-black text-white px-3 py-1 font-mono text-[11px] uppercase tracking-widest">Em Processamento</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-6">

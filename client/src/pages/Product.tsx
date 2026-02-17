@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useRoute, Link, useSearch } from 'wouter';
+import { useRoute, Link, useSearch, useLocation } from 'wouter';
 import { useProducts } from '@/context/ProductContext';
 import { Button } from '@/components/ui/button';
 import { SEO, ProductSchema } from '@/components/SEO';
@@ -29,6 +29,7 @@ export default function Product() {
   
   const { products, categories, collections, addToCart } = useProducts();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [mainImage, setMainImage] = useState('');
   const [selectedVersion, setSelectedVersion] = useState(1);
   const [selectedStoneType, setSelectedStoneType] = useState(stoneFromUrl || 'main');
@@ -131,7 +132,7 @@ export default function Product() {
     return (
       <div className="min-h-screen flex items-center justify-center flex-col gap-4 bg-background text-foreground">
         <h1 className="font-display text-2xl">Artefato Não Encontrado</h1>
-        <Link href="/shop"><Button variant="outline">Voltar ao Arquivo</Button></Link>
+        <Link href="/shop"><Button variant="outline">Voltar a Loja</Button></Link>
       </div>
     );
   }
@@ -142,6 +143,11 @@ export default function Product() {
       title: "Adicionado à Sacola",
       description: `${product.name} foi adicionado à sua sacola.`,
     });
+  };
+
+  const handleBuyNow = () => {
+    addToCart(product.id, 1, selectedStoneType);
+    navigate('/checkout');
   };
 
   // Get related products (same category, excluding current)
@@ -188,7 +194,7 @@ export default function Product() {
       <div className="container mx-auto px-6 md:px-12">
         <div className="mb-12">
            <Link href="/shop" className="group inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="h-3 w-3 group-hover:-translate-x-1 transition-transform" /> Voltar ao Arquivo
+              <ArrowLeft className="h-3 w-3 group-hover:-translate-x-1 transition-transform" /> Voltar a Loja
            </Link>
         </div>
 
@@ -299,7 +305,7 @@ export default function Product() {
                             }`}
                           />
                         </div>
-                        <div className={`absolute bottom-0 left-0 right-0 py-2 text-center font-mono text-[10px] uppercase tracking-widest transition-all ${
+                        <div className={`absolute bottom-0 left-0 right-0 py-2 text-center font-mono text-[11px] uppercase tracking-widest transition-all ${
                           selectedVersion === v.version 
                             ? 'bg-black text-white' 
                             : 'bg-white/90 text-muted-foreground group-hover:bg-black/10'
@@ -323,15 +329,15 @@ export default function Product() {
                 >
                   <span>Adicionar à Sacola</span>
                 </Button>
-                <Link href="/checkout">
-                  <Button 
-                    size="lg" 
-                    className="w-full rounded-none h-16 bg-black text-white hover:bg-primary font-mono text-xs uppercase tracking-widest flex items-center justify-between px-8"
-                  >
-                    <span>Comprar Agora</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button 
+                  size="lg" 
+                  className="w-full rounded-none h-16 bg-black text-white hover:bg-primary font-mono text-xs uppercase tracking-widest flex items-center justify-between px-8"
+                  onClick={handleBuyNow}
+                  data-testid="button-buy-now"
+                >
+                  <span>Comprar Agora</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
               
               {/* Ring Size Guide Button - Only for rings */}
@@ -418,7 +424,7 @@ export default function Product() {
                 </Dialog>
               ) : null}
               
-              <div className="font-mono text-[10px] uppercase tracking-widest text-center text-muted-foreground">
+              <div className="font-mono text-[11px] uppercase tracking-widest text-center text-muted-foreground">
                 Envio Global Grátis • Garantia Vitalícia
               </div>
             </div>
