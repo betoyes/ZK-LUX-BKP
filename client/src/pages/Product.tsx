@@ -162,7 +162,7 @@ export default function Product() {
   const seoDescription = getCurrentDescription()?.slice(0, 160) || `${product.name} - Joia exclusiva ZK REZK em ouro 18K.`;
 
   return (
-    <div className="min-h-screen bg-background pt-32 pb-24">
+    <div className="min-h-screen bg-background pt-28 pb-24">
       <SEO
         title={product.name}
         description={seoDescription}
@@ -192,17 +192,17 @@ export default function Product() {
         url={productUrl}
       />
       <div className="container mx-auto px-6 md:px-12">
-        <div className="mb-12">
+        <div className="mb-8">
            <Link href="/shop" className="group inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-3 w-3 group-hover:-translate-x-1 transition-transform" /> Voltar a Loja
            </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 mb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 mb-32 max-w-7xl mx-auto">
           {/* Product Image - Sticky on Desktop */}
-          <div className="lg:col-span-7 relative">
-             <div className="sticky top-32 space-y-6">
-               <div className="aspect-[3/4] bg-secondary overflow-hidden">
+          <div className="relative">
+             <div className="sticky top-32 space-y-4">
+               <div className="aspect-square bg-secondary overflow-hidden max-h-[55vh] lg:max-h-[58vh]">
                  <img 
                   src={mainImage || product.image || product.imageColor} 
                   alt={product.name} 
@@ -210,12 +210,62 @@ export default function Product() {
                   className="w-full h-full object-cover transition-opacity duration-300"
                 />
                </div>
+               {/* Version Thumbnails - Inline below image on desktop */}
+               {hasRealVersions && (
+                 <div className="hidden lg:block">
+                   <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-3 block">
+                     Escolha sua versão
+                   </span>
+                   {(() => {
+                     const uniqueVersions = productVersions.filter((v, idx) => {
+                       if (idx === 0) return !!(product as any).version1;
+                       if (idx === 1) return !!(product as any).version2;
+                       if (idx === 2) return !!(product as any).version3;
+                       return false;
+                     });
+                     if (uniqueVersions.length === 0) return null;
+                     return (
+                       <div className="grid grid-cols-3 gap-2">
+                         {uniqueVersions.map((v) => (
+                           <button
+                             key={v.version}
+                             onClick={() => handleVersionChange(v.version)}
+                             className={`group relative border transition-all duration-300 ${
+                               selectedVersion === v.version 
+                                 ? 'border-black ring-1 ring-black' 
+                                 : 'border-border hover:border-black/50'
+                             }`}
+                           >
+                             <div className="aspect-square overflow-hidden">
+                               <img 
+                                 src={v.image} 
+                                 alt={v.name}
+                                 loading="lazy"
+                                 className={`w-full h-full object-cover transition-all duration-300 ${
+                                   selectedVersion === v.version ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
+                                 }`}
+                               />
+                             </div>
+                             <div className={`absolute bottom-0 left-0 right-0 py-1.5 text-center font-mono text-[10px] uppercase tracking-widest transition-all ${
+                               selectedVersion === v.version 
+                                 ? 'bg-black text-white' 
+                                 : 'bg-white/90 text-muted-foreground group-hover:bg-black/10'
+                             }`}>
+                               {v.name}
+                             </div>
+                           </button>
+                         ))}
+                       </div>
+                     );
+                   })()}
+                 </div>
+               )}
              </div>
           </div>
 
           {/* Product Details */}
-          <div className="lg:col-span-5 flex flex-col justify-center">
-            <div className="border-t border-black pt-4 mb-8">
+          <div className="flex flex-col justify-center">
+            <div className="border-t border-black pt-4 mb-6">
               <div className="flex justify-between items-start mb-4">
                 <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                   Coleção {collections.find(c => c.id === product.collectionId)?.name || ''}
@@ -224,17 +274,17 @@ export default function Product() {
                   Ref. {product.id.toString().padStart(4, '0')}
                 </span>
               </div>
-              <h1 className="font-display text-5xl md:text-6xl font-medium tracking-tight mb-6 leading-none">{product.name}</h1>
-              <p className="font-mono text-xl">R$ {((productHasVariations ? getCurrentPrice() : product.price) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <h1 className="font-display text-4xl md:text-5xl lg:text-[2.75rem] font-medium tracking-tight mb-4 leading-none">{product.name}</h1>
+              <p className="font-mono text-lg">R$ {((productHasVariations ? getCurrentPrice() : product.price) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
             </div>
 
-            <p className="text-lg leading-relaxed mb-8 text-muted-foreground font-light">
+            <p className="text-base leading-relaxed mb-6 text-muted-foreground font-light">
               {productHasVariations ? getCurrentDescription() : product.description}
             </p>
 
             {/* Technical Specifications - Always visible */}
-            <div className="mb-8 border-t border-border pt-6">
-              <h3 className="font-mono text-xs uppercase tracking-widest mb-4">Especificações Técnicas</h3>
+            <div className="mb-6 border-t border-border pt-4">
+              <h3 className="font-mono text-xs uppercase tracking-widest mb-3">Especificações Técnicas</h3>
               <ul className="space-y-2 text-muted-foreground font-light">
                 {(productHasVariations ? getCurrentSpecs() : ((product.specs as string[]) || [])).length > 0 ? (
                   (productHasVariations ? getCurrentSpecs() : ((product.specs as string[]) || [])).map((spec: string, idx: number) => (
@@ -253,7 +303,7 @@ export default function Product() {
 
             {/* Stone Type Selector - Dynamic */}
             {productHasVariations && (
-              <div className="mb-8">
+              <div className="mb-6">
                 <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-3 block flex items-center gap-2">
                   <Gem className="h-3 w-3" /> Tipo de Pedra
                 </span>
@@ -266,16 +316,15 @@ export default function Product() {
               </div>
             )}
 
-            {/* Version Selector - Only show if product has actual versions */}
+            {/* Version Selector - Only on mobile (desktop version is in the image column) */}
             {hasRealVersions && (
-            <div className="mb-10">
+            <div className="mb-10 lg:hidden">
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-4 block">
                 Escolha sua versão
               </span>
               
-              {/* Row 1: Version Photos - only show versions that have unique images */}
               {(() => {
-                const uniqueVersions = productVersions.filter((v, idx, arr) => {
+                const uniqueVersions = productVersions.filter((v, idx) => {
                   if (idx === 0) return !!(product as any).version1;
                   if (idx === 1) return !!(product as any).version2;
                   if (idx === 2) return !!(product as any).version3;
@@ -320,18 +369,18 @@ export default function Product() {
             </div>
             )}
 
-            <div className="space-y-6 mb-16">
+            <div className="space-y-4 mb-12">
               <div className="grid grid-cols-2 gap-4">
                 <Button 
                   size="lg" 
-                  className="w-full rounded-none h-16 bg-transparent border border-black text-black hover:bg-black hover:text-white font-mono text-xs uppercase tracking-widest flex items-center justify-center px-8"
+                  className="w-full rounded-none h-14 bg-transparent border border-black text-black hover:bg-black hover:text-white font-mono text-xs uppercase tracking-widest flex items-center justify-center px-6"
                   onClick={handleAddToCart}
                 >
                   <span>Adicionar à Sacola</span>
                 </Button>
                 <Button 
                   size="lg" 
-                  className="w-full rounded-none h-16 bg-black text-white hover:bg-primary font-mono text-xs uppercase tracking-widest flex items-center justify-between px-8"
+                  className="w-full rounded-none h-14 bg-black text-white hover:bg-primary font-mono text-xs uppercase tracking-widest flex items-center justify-between px-6"
                   onClick={handleBuyNow}
                   data-testid="button-buy-now"
                 >
