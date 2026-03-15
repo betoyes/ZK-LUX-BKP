@@ -3,9 +3,12 @@ import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import compression from "compression";
+
 
 const app = express();
 app.set("trust proxy", 1);
+app.use(compression());
 const httpServer = createServer(app);
 
 const isProduction = process.env.NODE_ENV === "production";
