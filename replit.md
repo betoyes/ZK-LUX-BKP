@@ -2,9 +2,7 @@
 
 ## Overview
 
-ZK REZK is a full-stack luxury jewelry e-commerce application built with a modern monorepo architecture. The platform features a sophisticated React frontend with a Node.js/Express backend, utilizing PostgreSQL (via Neon) for data persistence. The application emphasizes elegant design, smooth user experiences, and a comprehensive admin dashboard for content management.
-
-The platform serves as both a customer-facing storefront and an administrative content management system for managing products, collections, journal posts, and customer orders. It implements session-based authentication with role-based access control (admin vs. customer users).
+ZK REZK is a full-stack luxury jewelry e-commerce platform with a modern monorepo architecture. It features a React frontend and a Node.js/Express backend, using PostgreSQL (via Neon) for data. The platform offers an elegant design, smooth user experience, and a comprehensive admin dashboard. It serves as both a customer-facing storefront and an administrative content management system for products, collections, journal posts, and customer orders, implementing session-based authentication with role-based access control.
 
 ## User Preferences
 
@@ -15,123 +13,121 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 
 **Framework & Build System**
-- **React 18** with TypeScript for type-safe component development
-- **Vite** as the build tool and development server, configured for hot module replacement
-- **Wouter** for client-side routing (lightweight alternative to React Router)
-- **TanStack Query** for server state management and data fetching
+- **React 18** with TypeScript
+- **Vite** for build and development
+- **Wouter** for client-side routing
+- **TanStack Query** for server state management
 
 **UI Component Strategy**
-- **shadcn/ui** component library built on Radix UI primitives
-- **Tailwind CSS** with custom configuration for utility-first styling
-- **Framer Motion** for animations and page transitions
-- **Custom design system** with luxury jewelry aesthetic (serif/display fonts, brutalist modern design)
+- **shadcn/ui** built on Radix UI
+- **Tailwind CSS** for styling
+- **Framer Motion** for animations
+- **Custom design system** with a luxury aesthetic (serif/display fonts, brutalist modern design)
 
 **State Management Approach**
-- **ProductContext** provides global state for products, categories, collections, wishlist, branding, and journal posts
-- **AuthContext** manages user authentication state and login/logout operations
-- React Context API used instead of Redux/Zustand for simpler state management
-- TanStack Query handles server state caching and synchronization
+- **React Context API** for global state (ProductContext, AuthContext)
+- TanStack Query for server state caching
 
 **Key Design Decisions**
-- Monolithic context providers centralize business logic
-- Custom hooks (useProducts, useAuth, useToast) abstract context consumption
-- Image assets stored in `attached_assets` directory, imported as modules
-- Mobile-first responsive design with breakpoint utilities
+- Monolithic context providers
+- Custom hooks (useProducts, useAuth, useToast)
+- Mobile-first responsive design
 
 ### Backend Architecture
 
 **Server Framework**
 - **Express.js** REST API with TypeScript
-- **Session-based authentication** using express-session with connect-pg-simple for PostgreSQL session storage
-- **Passport.js** with local strategy for username/password authentication
+- **Session-based authentication** using `express-session` with `connect-pg-simple`
+- **Passport.js** for authentication
 - **bcrypt** for password hashing
 
 **Database Layer**
-- **Drizzle ORM** for type-safe database queries and schema management
-- **Neon Serverless PostgreSQL** as the database provider
-- Schema defined in `shared/schema.ts` for code sharing between client and server
-- WebSocket constructor (ws) configured for Neon's serverless connection pooling
+- **Drizzle ORM** for type-safe queries and schema management
+- **Neon Serverless PostgreSQL**
+- Shared schema (`shared/schema.ts`)
 
 **Authentication & Authorization**
-- Session cookies with secure HttpOnly settings
-- Role-based middleware (`requireAuth`, `requireAdmin`) for route protection
-- Separate admin and customer user roles in the same users table
-- Password hashing with bcrypt (10 rounds)
-- Email verification required for customer accounts before login
-- Password reset via secure email tokens (1-hour expiry)
-- Email verification tokens (24-hour expiry)
-- Resend integration for transactional emails
+- Session cookies with HttpOnly settings
+- Role-based middleware (`requireAuth`, `requireAdmin`)
+- Email verification and password reset via secure tokens
 
 **API Design**
-- RESTful endpoints under `/api` namespace
-- Organized by resource (auth, products, categories, collections, journal, orders, customers)
-- CRUD operations for all major entities
-- Validation using Zod schemas derived from Drizzle schemas
+- RESTful endpoints under `/api`
+- Organized by resource
+- CRUD operations for entities
+- Validation using Zod schemas
 
 **Code Organization**
-- `server/routes.ts`: API endpoint registration and middleware configuration
-- `server/storage.ts`: Database abstraction layer (repository pattern)
-- `server/db.ts`: Database connection and Drizzle initialization
-- `shared/schema.ts`: Shared database schema and validation schemas
+- `server/routes.ts`: API endpoint registration
+- `server/storage.ts`: Database abstraction
+- `server/db.ts`: Database connection
+- `shared/schema.ts`: Shared schemas
 
 ### Build & Deployment
 
 **Development Workflow**
-- `npm run dev`: Runs Express server with Vite middleware for HMR
-- `npm run dev:client`: Standalone Vite development server
-- Custom Vite plugins for runtime error overlay and meta image management
+- `npm run dev`: Express server with Vite middleware
+- Custom Vite plugins for runtime error overlay
 
 **Production Build**
-- `npm run build`: Custom esbuild script bundles server code
-- Allowlist strategy for bundling specific dependencies to reduce cold start times
+- `npm run build`: `esbuild` for server code bundling
 - Client assets built with Vite to `dist/public`
-- Server bundled to single `dist/index.cjs` file
 
 **Build Strategy Rationale**
-- esbuild chosen for fast server bundling vs. traditional tsc compilation
-- Selective dependency bundling reduces syscall overhead in serverless environments
-- Monolithic server bundle improves cold start performance
+- `esbuild` for fast server bundling
+- Selective dependency bundling for serverless environments
+- Monolithic server bundle for improved cold start performance
 
 ### Data Schema
 
 **Core Entities**
-- **Users**: Authentication (admin/customer roles) with emailVerified flag
-- **Categories**: Product categorization (rings, necklaces, earrings, bracelets)
-- **Collections**: Curated product groupings (Eternal, Aurora, etc.)
-- **Products**: Jewelry items with pricing, images, specs, bestseller/new flags
-- **Journal Posts**: Editorial content with categories and excerpts
-- **Subscribers**: Email list with segmentation (newsletter, lead, customer types)
-- **Customers**: Extended customer profiles (separate from users)
-- **Orders**: Purchase records with status tracking
-- **Branding**: Configurable site content (hero text, manifesto, company name)
-- **EmailVerificationTokens**: Hashed tokens for email confirmation (24-hour expiry, token_hash column)
-- **PasswordResetTokens**: Hashed tokens for password recovery (1-hour expiry, single-use, token_hash column)
+- **Users**: Admin/customer roles, email verification
+- **Categories, Collections, Products**: Core e-commerce entities
+- **Journal Posts**: Editorial content
+- **Subscribers, Customers, Orders**: User and transactional data
+- **Branding**: Configurable site content
+- **EmailVerificationTokens, PasswordResetTokens**: For secure authentication flows
 
 **Schema Design Decisions**
-- Relational structure with foreign keys (categoryId, collectionId on products)
-- Text fields for images (supports both base64 and URLs)
-- Boolean flags for product features (isNew, isBestseller)
-- Denormalized branding table (single row configuration)
-- Serial IDs for auto-incrementing primary keys
+- Relational structure with foreign keys
+- Boolean flags for product features
+- Denormalized branding table
+- Serial IDs for primary keys
+
+### Security & LGPD Compliance
+
+**Security Features**
+- **Helmet Security Headers**: HSTS, X-Frame-Options, CSP
+- **Rate Limiting**: For login, registration, password recovery
+- **CSRF Protection**: Session-based tokens
+- **Input Validation**: Zod schemas with Portuguese error messages
+- **Password Strength**: Minimum 8 characters with complexity
+- **Secure Token Hashing**: SHA256 hashes stored for tokens
+
+**LGPD Compliance**
+- **Consent Management**: Required consent for Terms and Privacy Policy, optional for marketing
+- **Data Export**: User data export in JSON format
+- **Account Deletion**: Anonymization or soft deletion with retention period
+- **Audit Logging**: Sensitive actions logged to `audit_logs` table
 
 ## External Dependencies
 
 ### Database & ORM
-- **@neondatabase/serverless**: Neon PostgreSQL serverless driver with WebSocket support
-- **drizzle-orm**: Type-safe ORM with schema builder
-- **drizzle-kit**: CLI for migrations and schema management
+- **@neondatabase/serverless**: Neon PostgreSQL driver
+- **drizzle-orm**: Type-safe ORM
+- **drizzle-kit**: CLI for migrations
 
 ### UI & Styling
-- **@radix-ui/***: Unstyled, accessible component primitives (30+ components)
-- **tailwindcss**: Utility-first CSS framework with JIT compiler
-- **framer-motion**: Declarative animations library
+- **@radix-ui/***: Unstyled component primitives
+- **tailwindcss**: Utility-first CSS
+- **framer-motion**: Animations
 - **lucide-react**: Icon library
 
 ### Forms & Validation
-- **react-hook-form**: Performant form state management
-- **@hookform/resolvers**: Form validation resolver adapters
-- **zod**: TypeScript-first schema validation
-- **drizzle-zod**: Auto-generates Zod schemas from Drizzle tables
+- **react-hook-form**: Form state management
+- **@hookform/resolvers**: Form validation resolvers
+- **zod**: Schema validation
+- **drizzle-zod**: Zod schemas from Drizzle tables
 
 ### Authentication
 - **passport**: Authentication middleware
@@ -141,157 +137,24 @@ Preferred communication style: Simple, everyday language.
 - **connect-pg-simple**: PostgreSQL session store
 
 ### Development Tools
-- **vite**: Next-generation frontend tooling
-- **esbuild**: Fast JavaScript bundler for server code
-- **tsx**: TypeScript execution for development
-- **@replit/vite-plugin-***: Replit-specific development plugins
+- **vite**: Frontend tooling
+- **esbuild**: JavaScript bundler
+- **tsx**: TypeScript execution
+- **@replit/vite-plugin-***: Replit-specific plugins
 
 ### Routing & State
-- **wouter**: Minimalist router (2KB)
+- **wouter**: Minimalist router
 - **@tanstack/react-query**: Async state management
 
 ### Carousel
-- **embla-carousel-react**: Lightweight carousel library
-- **embla-carousel-autoplay**: Autoplay plugin for carousels
+- **embla-carousel-react**: Lightweight carousel
+- **embla-carousel-autoplay**: Autoplay plugin
 
 ### Asset Management
-- Custom Vite plugin (`vite-plugin-meta-images.ts`) for OpenGraph image URL generation
-- Static asset serving from `client/public` directory
-- Image imports from `attached_assets` directory
+- Custom Vite plugin for OpenGraph image URL generation
+- Static asset serving
+- Image imports from `attached_assets`
 
 ### Notable Third-Party Services
-- **Neon Database**: Serverless Postgres with connection pooling
-- Designed for potential integration with Stripe (dependency present but not implemented)
-- **Resend**: Email service for transactional emails (verification, password reset, admin notifications)
-
-## Email Automation
-
-**Admin Notifications**
-- Email notifications are sent to betoyes@gmail.com for:
-  - New newsletter subscriptions (`/api/subscribers`)
-  - New user registrations (`/api/auth/register`)
-  - New customer creations (`/api/customers`)
-  - New order placements (`/api/orders`)
-- Notifications are sent asynchronously and don't block the main response
-- Implementation in `server/email.ts` using `sendAdminNotification()` function
-
-**Transactional Emails**
-- Email verification for new customer accounts
-- Password reset links (1-hour expiry)
-- Fallback to onboarding@resend.dev if domain not verified
-
-## Environment Variables
-
-### Required in Production
-| Variable | Description | Default (Dev Only) |
-|----------|-------------|-------------------|
-| `SESSION_SECRET` | Secret key for session encryption | None (required always) |
-| `PRIMARY_ADMIN_EMAIL` | Email of the primary admin user | `admin@localhost` |
-| `ADMIN_NOTIFY_EMAIL` | Email to receive admin notifications | `admin@localhost` |
-| `DATABASE_URL` | PostgreSQL connection string | Provided by Replit |
-
-### Security Notes
-- `PRIMARY_ADMIN_EMAIL` and `ADMIN_NOTIFY_EMAIL` have safe defaults for development only
-- In production, the app will crash if these are not set (fail-fast security)
-- Never commit real email addresses to code
-
-## Security & LGPD Compliance
-
-### Security Features
-- **Helmet Security Headers**: HTTP security headers configured for protection
-  - HSTS: Enabled in production (1 year max-age, includeSubDomains)
-  - X-Frame-Options: DENY (prevents clickjacking)
-  - X-Content-Type-Options: nosniff (prevents MIME sniffing)
-  - Referrer-Policy: strict-origin-when-cross-origin
-  - Content-Security-Policy: Conservative policy allowing self + inline styles/scripts
-  - X-Powered-By: Hidden
-- **Rate Limiting**: Protection against brute force attacks
-  - Login: 5 attempts per 15 minutes per IP
-  - Register: 3 attempts per hour per IP
-  - Forgot Password: 3 attempts per hour per IP
-  - Password Reset: 5 attempts per 15 minutes per IP
-- **CSRF Protection**: Session-based CSRF tokens validated on POST/PATCH/DELETE requests
-- **Input Validation**: Zod schemas validate all auth inputs with Portuguese error messages
-- **Password Strength**: Minimum 8 characters with complexity requirements
-- **Secure Token Hashing**: Tokens are never stored in plaintext
-  - crypto.randomBytes(32) generates random tokens
-  - Only SHA256 hash is stored in database (token_hash column)
-  - Raw token is sent only via email link
-  - Validation compares SHA256(received_token) with stored hash
-
-### LGPD (Brazilian Data Protection Law) Compliance
-- **Consent Management**: Users must accept Terms and Privacy Policy during registration
-  - consentTerms (required)
-  - consentPrivacy (required)
-  - consentMarketing (optional)
-- **Data Export**: Users can request export of all personal data (JSON format)
-  - Rate limited: 1 request per 24 hours
-  - Download expires after 24 hours
-- **Account Deletion**: Two options available
-  - Anonymization: Replaces PII with "ANON_{id}" but keeps transaction history
-  - Soft Delete: Sets deletedAt, data purged after 30-day retention period
-- **Audit Logging**: All sensitive actions logged to audit_logs table
-  - login, login_failed, logout, register
-  - password_reset_request, password_reset_complete
-  - email_verified, consent_update
-  - data_export_request, data_export_generated
-  - account_delete, account_anonymize
-
-### LGPD API Endpoints
-- `GET /api/lgpd/consent-history` - View consent data and audit history
-- `PATCH /api/lgpd/consent` - Update consent preferences
-- `POST /api/lgpd/data-export` - Request data export
-- `GET /api/lgpd/data-export/:id` - Check export status
-- `POST /api/lgpd/data-export/:id/generate` - Generate export file
-- `DELETE /api/lgpd/account` - Anonymize or delete account
-- `GET /api/lgpd/data` - View all personal data
-
-### Authentication Flow
-1. **Registration**: User provides email, password, and accepts consents
-2. **Email Verification**: Verification email sent via Resend (24h expiry)
-3. **Login**: Only verified users can login (admin exempt)
-4. **Password Reset**: Secure token via email (1h expiry, invalidates previous tokens)
-
-### Frontend Pages
-- `/login` - Login form with toggle to register mode
-- `/register` - Redirects to /login?mode=register
-- `/forgot-password` - Request password reset email
-- `/reset-password` - Set new password with token
-- `/verify-email` - Verify email with token
-- `/privacy` - Privacy dashboard for consent, data export, account deletion
-
-## Recent Changes (December 2025)
-
-1. **Token Hashing Security**: Email verification and password reset tokens now use SHA256 hashing
-   - Plaintext tokens never stored in database
-   - Only token_hash column stores SHA256(token)
-   - Raw tokens sent only via email links
-   - Migration script: `script/migrate-token-hashing.sql`
-2. **LGPD Compliance**: Full implementation of Brazilian data protection requirements
-3. **Security Hardening**: Rate limiting, CSRF protection, input validation, audit logging
-4. **Email Verification Flow**: Complete flow with resend capability
-5. **Password Reset Improvements**: Secure tokens with invalidation of previous tokens
-6. **Privacy Dashboard**: Frontend for managing consents, data export, and account deletion
-7. **Registration with Consents**: Required checkboxes for terms and privacy policy
-
-## Recent Changes (March 2026)
-
-1. **Product Drag-and-Drop Reordering**: Admin dashboard products tab now supports drag-and-drop reordering
-   - Products table has a grip handle column for dragging
-   - Order is persisted via `displayOrder` column in the products table
-   - Shop page automatically respects the admin-defined order as default sort
-   - Uses `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`
-   - API endpoint: `PUT /api/products/reorder` (admin only)
-2. **Product Page Layout Improvements**: Better distribution on 13" notebooks and larger monitors
-   - Balanced 50/50 grid layout instead of 7/5
-   - Constrained image height with `max-h-[58vh]`
-   - Version thumbnails displayed inline below main image on desktop
-   - Tighter spacing for better above-the-fold content visibility
-
-## Previous Changes (November 2025)
-
-1. **CRUD Persistence Fixed**: ProductContext now calls backend APIs instead of only updating local state
-2. **Type System Fixed**: All CRUD functions properly typed as `Promise<void>`, numeric IDs for categories/collections
-3. **Newsletter Endpoint Fixed**: `/api/subscribers` auto-generates date field
-4. **Email Automation Implemented**: Admin notifications for leads, subscribers, customers, and orders
-5. **Price Formatting**: R$ Brazilian format with conversion to/from INTEGER centavos in database
+- **Neon Database**: Serverless Postgres
+- **Resend**: Email service for transactional emails and admin notifications

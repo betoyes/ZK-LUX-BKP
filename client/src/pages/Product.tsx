@@ -31,7 +31,7 @@ export default function Product() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [mainImage, setMainImage] = useState('');
-  const [selectedVersion, setSelectedVersion] = useState(1);
+  const [selectedVersion, setSelectedVersion] = useState(0);
   const [selectedStoneType, setSelectedStoneType] = useState(stoneFromUrl || 'main');
 
   const product = match ? products.find(p => p.id === parseInt(params.id)) : null;
@@ -106,10 +106,11 @@ export default function Product() {
     }
   }, [product]);
   
-  // Separate effect for version changes (only when user clicks a version)
   const handleVersionChange = (version: number) => {
     setSelectedVersion(version);
-    if (productVersions[version - 1]) {
+    if (version === 0) {
+      setMainImage(product?.image || product?.imageColor || '');
+    } else if (productVersions[version - 1]) {
       setMainImage(productVersions[version - 1].image);
     }
   };
@@ -224,9 +225,13 @@ export default function Product() {
                        return false;
                      });
                      if (uniqueVersions.length === 0) return null;
+                     const allThumbnails = [
+                       { version: 0, image: product.image || product.imageColor || '', name: 'Principal' },
+                       ...uniqueVersions
+                     ];
                      return (
-                       <div className="grid grid-cols-3 gap-2">
-                         {uniqueVersions.map((v) => (
+                       <div className="grid grid-cols-4 gap-2">
+                         {allThumbnails.map((v) => (
                            <button
                              key={v.version}
                              onClick={() => handleVersionChange(v.version)}
@@ -331,10 +336,13 @@ export default function Product() {
                   return false;
                 });
                 if (uniqueVersions.length === 0) return null;
-                const gridCols = uniqueVersions.length === 1 ? 'grid-cols-1' : uniqueVersions.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
+                const allThumbnails = [
+                  { version: 0, image: product.image || product.imageColor || '', name: 'Principal' },
+                  ...uniqueVersions
+                ];
                 return (
-                  <div className={`grid ${gridCols} gap-3 mb-3`}>
-                    {uniqueVersions.map((v) => (
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    {allThumbnails.map((v) => (
                       <button
                         key={v.version}
                         onClick={() => handleVersionChange(v.version)}
