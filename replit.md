@@ -274,6 +274,20 @@ Preferred communication style: Simple, everyday language.
 6. **Privacy Dashboard**: Frontend for managing consents, data export, and account deletion
 7. **Registration with Consents**: Required checkboxes for terms and privacy policy
 
+## Recent Changes (March 2026)
+
+1. **Product Drag-and-Drop Reordering**: Admin dashboard products tab now supports drag-and-drop reordering
+   - Products table has a grip handle column for dragging
+   - Order is persisted via `displayOrder` column in the products table
+   - Shop page automatically respects the admin-defined order as default sort
+   - Uses `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`
+   - API endpoint: `PUT /api/products/reorder` (admin only)
+2. **Product Page Layout Improvements**: Better distribution on 13" notebooks and larger monitors
+   - Balanced 50/50 grid layout instead of 7/5
+   - Constrained image height with `max-h-[58vh]`
+   - Version thumbnails displayed inline below main image on desktop
+   - Tighter spacing for better above-the-fold content visibility
+
 ## Previous Changes (November 2025)
 
 1. **CRUD Persistence Fixed**: ProductContext now calls backend APIs instead of only updating local state

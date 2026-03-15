@@ -1357,6 +1357,20 @@ export async function registerRoutes(
     }
   });
 
+  // Reorder products (drag-and-drop)
+  app.put("/api/products/reorder", requireAdmin, async (req, res, next) => {
+    try {
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ message: "orderedIds must be an array" });
+      }
+      await storage.reorderProducts(orderedIds);
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Clone product to Noivas category
   app.post(
     "/api/products/:id/clone-noivas",

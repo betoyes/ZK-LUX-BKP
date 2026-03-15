@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useProducts } from '@/context/ProductContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut, Pencil, Copy, Key } from 'lucide-react';
+import { BookOpen, Package, DollarSign, Users, TrendingUp, Edit, Trash, Plus, Search, LayoutGrid, Tags, ShoppingCart, Download, Shield, UserPlus, LogOut, Pencil, Copy, Key, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -20,6 +23,49 @@ import { api } from '@/lib/api';
 import { PasswordStrengthIndicator, usePasswordValidation } from '@/components/ui/password-strength-indicator';
 import { isPasswordValid } from '@shared/passwordStrength';
 import { filterVisibleCategories, isHiddenCategoryKey } from '@/lib/categoryVisibility';
+
+function SortableProductRow({ product, visibleCategories, collections, openEdit, handleCloneToNoivas, handleDelete }: {
+  product: any;
+  visibleCategories: any[];
+  collections: any[];
+  openEdit: (p: any) => void;
+  handleCloneToNoivas: (p: any) => void;
+  handleDelete: (id: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className="hover:bg-secondary/30 border-b border-border transition-colors" data-testid={`row-product-${product.id}`}>
+      <TableCell className="py-4 w-10">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground touch-none" data-testid={`drag-handle-${product.id}`}>
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </TableCell>
+      <TableCell className="py-4">
+        <div className="h-12 w-12 bg-secondary overflow-hidden">
+          <img src={product.image} alt={product.name} className="h-full w-full object-cover grayscale hover:grayscale-0 transition-all" />
+        </div>
+      </TableCell>
+      <TableCell className="font-display text-base">{product.name}</TableCell>
+      <TableCell className="font-mono text-xs uppercase tracking-widest">{visibleCategories.find((c: any) => c.id === product.categoryId)?.name || '-'}</TableCell>
+      <TableCell className="font-mono text-xs uppercase tracking-widest">{collections.find((c: any) => c.id === product.collectionId)?.name || '-'}</TableCell>
+      <TableCell className="font-mono text-sm text-right">R$ {(product.price / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-1">
+          <Button onClick={() => openEdit(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-black hover:bg-transparent" title="Editar"><Edit className="h-4 w-4" /></Button>
+          <Button onClick={() => handleCloneToNoivas(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-rose-500 hover:bg-transparent" title="Clonar para Noivas"><Copy className="h-4 w-4" /></Button>
+          <Button onClick={() => handleDelete(product.id)} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-transparent" title="Excluir"><Trash className="h-4 w-4" /></Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
 
 // Helper to select a random image based on category if user doesn't provide one (mock behavior)
 const getMockImage = (category: string) => {
@@ -49,7 +95,7 @@ interface Subscriber {
 export default function Dashboard() {
   const { 
     products, categories, collections, orders, customers,
-    addProduct, updateProduct, deleteProduct,
+    addProduct, updateProduct, deleteProduct, reorderProducts,
     addCategory, deleteCategory,
     addCollection, updateCollection, deleteCollection,
     posts, addPost, deletePost, updatePost,
@@ -442,12 +488,39 @@ export default function Dashboard() {
     }
   };
 
-  const filteredProducts = (Array.isArray(products) ? products : []).filter(p => {
+  const sortedProducts = useMemo(() => {
+    return [...(Array.isArray(products) ? products : [])].sort((a, b) => {
+      const orderA = (a as any).displayOrder || 0;
+      const orderB = (b as any).displayOrder || 0;
+      if (orderA === orderB) return a.id - b.id;
+      return orderA - orderB;
+    });
+  }, [products]);
+
+  const filteredProducts = sortedProducts.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategoryId ? p.categoryId === filterCategoryId : true;
     const matchesCollection = filterCollectionId ? p.collectionId === filterCollectionId : true;
     return matchesSearch && matchesCategory && matchesCollection;
   });
+
+  const isFiltering = searchTerm !== '' || filterCategoryId !== null || filterCollectionId !== null;
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = filteredProducts.findIndex(p => p.id === active.id);
+    const newIndex = filteredProducts.findIndex(p => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newOrder = arrayMove(filteredProducts, oldIndex, newIndex);
+    await reorderProducts(newOrder.map(p => p.id));
+    toast({ title: "Ordem atualizada", description: "A ordem dos produtos foi salva." });
+  };
   
   const filteredPosts = posts.filter(p => 
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1506,47 +1579,46 @@ export default function Dashboard() {
               </Dialog>
             </div>
 
+            {isFiltering && (
+              <p className="text-xs text-muted-foreground font-mono mb-2">Arrastar para reordenar está desabilitado enquanto filtros estão ativos.</p>
+            )}
             <div className="border border-border bg-card">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-b border-border">
-                    <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Imagem</TableHead>
-                    <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Nome</TableHead>
-                    <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Categoria</TableHead>
-                    <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Coleção</TableHead>
-                    <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12 text-right">Preço</TableHead>
-                    <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12 text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.length === 0 ? (
-                     <TableRow>
-                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado.</TableCell>
-                     </TableRow>
-                  ) : (
-                    filteredProducts.map((product) => (
-                      <TableRow key={product.id} className="hover:bg-secondary/30 border-b border-border transition-colors">
-                        <TableCell className="py-4">
-                          <div className="h-12 w-12 bg-secondary overflow-hidden">
-                            <img src={product.image} alt={product.name} className="h-full w-full object-cover grayscale hover:grayscale-0 transition-all" />
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-display text-base">{product.name}</TableCell>
-                        <TableCell className="font-mono text-xs uppercase tracking-widest">{visibleCategories.find(c => c.id === product.categoryId)?.name || '-'}</TableCell>
-                        <TableCell className="font-mono text-xs uppercase tracking-widest">{collections.find(c => c.id === product.collectionId)?.name || '-'}</TableCell>
-                        <TableCell className="font-mono text-sm text-right">R$ {(product.price / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button onClick={() => openEdit(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-black hover:bg-transparent" title="Editar"><Edit className="h-4 w-4" /></Button>
-                            <Button onClick={() => handleCloneToNoivas(product)} variant="ghost" size="icon" className="h-8 w-8 hover:text-rose-500 hover:bg-transparent" title="Clonar para Noivas"><Copy className="h-4 w-4" /></Button>
-                            <Button onClick={() => handleDelete(product.id)} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive hover:bg-transparent" title="Excluir"><Trash className="h-4 w-4" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b border-border">
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12 w-10"></TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Imagem</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Nome</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Categoria</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12">Coleção</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12 text-right">Preço</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest text-muted-foreground h-12 text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.length === 0 ? (
+                       <TableRow>
+                         <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado.</TableCell>
+                       </TableRow>
+                    ) : (
+                      <SortableContext items={filteredProducts.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                        {filteredProducts.map((product) => (
+                          <SortableProductRow
+                            key={product.id}
+                            product={product}
+                            visibleCategories={visibleCategories}
+                            collections={collections}
+                            openEdit={openEdit}
+                            handleCloneToNoivas={handleCloneToNoivas}
+                            handleDelete={handleDelete}
+                          />
+                        ))}
+                      </SortableContext>
+                    )}
+                  </TableBody>
+                </Table>
+              </DndContext>
             </div>
 
             {/* Edit Dialog */}

@@ -75,7 +75,10 @@ export default function Shop() {
     if (sortOption === 'price-asc') return a.price - b.price;
     if (sortOption === 'price-desc') return b.price - a.price;
     if (sortOption === 'newest') return (a.isNew === b.isNew) ? 0 : a.isNew ? -1 : 1;
-    return 0;
+    const orderA = (a as any).displayOrder || 0;
+    const orderB = (b as any).displayOrder || 0;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.id - b.id;
   });
 
   const toggleCategory = (id: string) => {

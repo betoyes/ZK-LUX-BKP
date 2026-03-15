@@ -144,6 +144,8 @@ export const products = pgTable("products", {
   stoneVariations: text("stone_variations"), // JSON string: [{name: "Diamante Natural", price: 10000, description: "..."}]
   // Zoom level for hover effect (100 = no zoom, 105 = 5% zoom, 110 = 10% zoom, etc)
   zoomLevel: integer("zoom_level").default(105),
+  // Display order for admin-controlled sorting on the Shop page
+  displayOrder: integer("display_order").default(0),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({ id: true });

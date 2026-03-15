@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Product, products as initialProducts, Category, categories as initialCategories, Collection, collections as initialCollections, Branding, initialBranding, JournalPost, initialPosts } from '@/lib/mockData';
 import ringImage from '@assets/generated_images/diamond_ring_product_shot.webp';
+import { getCsrfToken } from '@/lib/csrf';
 
 export interface CartItem {
   productId: number;
@@ -23,6 +24,7 @@ interface ProductContextType {
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: number, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
+  reorderProducts: (orderedIds: number[]) => Promise<void>;
   
   addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
   deleteCategory: (id: number) => Promise<void>;
@@ -193,6 +195,33 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.error('Failed to delete product:', err);
+    }
+  };
+
+  const reorderProducts = async (orderedIds: number[]) => {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const csrfToken = getCsrfToken();
+      if (csrfToken) headers['x-csrf-token'] = csrfToken;
+      const response = await fetch('/api/products/reorder', {
+        method: 'PUT',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ orderedIds })
+      });
+      if (response.ok) {
+        setProducts(prev => {
+          const ordered = orderedIds.map((id, idx) => {
+            const p = prev.find(pr => pr.id === id);
+            if (p) return { ...p, displayOrder: idx + 1 };
+            return p;
+          }).filter(Boolean) as Product[];
+          const remaining = prev.filter(p => !orderedIds.includes(p.id));
+          return [...ordered, ...remaining];
+        });
+      }
+    } catch (err) {
+      console.error('Failed to reorder products:', err);
     }
   };
 
@@ -409,7 +438,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   return (
     <ProductContext.Provider value={{ 
       products, categories, collections, orders, customers, posts, wishlist, cart, isLoading,
-      addProduct, updateProduct, deleteProduct,
+      addProduct, updateProduct, deleteProduct, reorderProducts,
       addCategory, deleteCategory,
       addCollection, updateCollection, deleteCollection,
       addPost, deletePost, updatePost,

@@ -53,6 +53,7 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<void>;
+  reorderProducts(orderedIds: number[]): Promise<void>;
 
   // Journal Posts
   getJournalPosts(): Promise<JournalPost[]>;
@@ -250,6 +251,7 @@ export class DatabaseStorage implements IStorage {
       mainStoneName: products.mainStoneName,
       stoneVariations: products.stoneVariations,
       zoomLevel: products.zoomLevel,
+      displayOrder: products.displayOrder,
     }).from(products);
     return rows.map(r => ({
       ...r,
@@ -305,6 +307,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  async reorderProducts(orderedIds: number[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.update(products).set({ displayOrder: i + 1 }).where(eq(products.id, orderedIds[i]));
+    }
   }
 
   // Journal Posts
