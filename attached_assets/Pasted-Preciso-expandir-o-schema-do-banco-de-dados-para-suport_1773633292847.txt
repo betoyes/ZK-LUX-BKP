@@ -1,0 +1,112 @@
+Preciso expandir o schema do banco de dados para suportar um perfil 
+completo de cliente. Este é o Prompt 1 de 4 de uma série de melhorias 
+interdependentes. NÃO implemente nada além do que está descrito aqui.
+
+---
+
+CONTEXTO DO PROJETO:
+- Stack: TypeScript, Node.js, Express, React, Drizzle ORM, PostgreSQL (Neon)
+- Schema atual em: shared/schema.ts
+- Migrations em: drizzle.config.ts
+- Arquivo de storage: server/storage.ts
+- Rotas: server/routes.ts
+
+---
+
+TAREFA 1 — Adicionar campos de perfil na tabela users
+No arquivo shared/schema.ts, adicionar os seguintes campos opcionais 
+à tabela users existente (NÃO recriar a tabela, apenas adicionar campos):
+
+  fullName       text (nullable)
+  cpfCnpj        text (nullable)  
+  phone          text (nullable)
+  addressStreet  text (nullable)
+  addressNumber  text (nullable)
+  addressComplement text (nullable)
+  addressNeighborhood text (nullable)
+  addressCity    text (nullable)
+  addressState   text (nullable)
+  addressZip     text (nullable)
+
+Todos os campos devem ser nullable para não quebrar usuários existentes.
+
+---
+
+TAREFA 2 — Criar o tipo UpdateUserProfileSchema
+No arquivo shared/schema.ts, criar um schema Zod para validação 
+chamado updateUserProfileSchema com todos os campos acima, 
+todos opcionais. Exportar junto com os outros schemas existentes.
+
+---
+
+TAREFA 3 — Rodar a migration
+Após atualizar o schema, executar o comando de migration do Drizzle 
+para aplicar as alterações no banco PostgreSQL:
+  npm run db:push
+OU o comando equivalente que já existe no projeto para sincronizar 
+o schema com o banco.
+
+---
+
+TAREFA 4 — Adicionar métodos no storage
+No arquivo server/storage.ts, adicionar dois novos métodos na 
+interface e na implementação:
+
+Método 1: getUserProfile(userId: number)
+  - Busca o usuário pelo id
+  - Retorna: id, username, email, fullName, cpfCnpj, phone,
+    addressStreet, addressNumber, addressComplement,
+    addressNeighborhood, addressCity, addressState, addressZip
+  - NÃO retornar: password, sessionTokens ou dados sensíveis
+
+Método 2: updateUserProfile(userId: number, data: Partial<UpdateUserProfile>)
+  - Atualiza apenas os campos fornecidos (partial update)
+  - Retorna o usuário atualizado (sem senha)
+  - Usar o schema updateUserProfileSchema para validação
+
+---
+
+TAREFA 5 — Criar endpoints de perfil
+No arquivo server/routes.ts, adicionar dois novos endpoints 
+na seção após os routes de auth existentes:
+
+Endpoint 1: GET /api/users/profile
+  - Requer autenticação (usar middleware requireAuth existente)
+  - Chama storage.getUserProfile(req.user.id)
+  - Retorna os dados do perfil sem senha
+  - Cache-Control: private, no-cache (dados pessoais)
+
+Endpoint 2: PATCH /api/users/profile
+  - Requer autenticação (usar middleware requireAuth existente)
+  - Valida o body com updateUserProfileSchema
+  - Chama storage.updateUserProfile(req.user.id, validatedData)
+  - Retorna o perfil atualizado
+  - Registrar evento de auditoria com logAuditEvent:
+    ação: 'profile_update', incluir no details quais campos foram 
+    alterados (apenas as chaves, não os valores)
+
+---
+
+TAREFA 6 — Atualizar a página /account no frontend
+No componente da página de conta do usuário (procurar em 
+client/src/pages/ por Account ou similar):
+
+Adicionar uma seção "Meus Dados" que exibe os campos do perfil
+e permite editar via formulário. O formulário deve:
+  - Buscar dados via GET /api/users/profile ao carregar
+  - Mostrar campos: Nome completo, CPF/CNPJ, Telefone, 
+    e campos de endereço
+  - Botão "Salvar alterações" que chama PATCH /api/users/profile
+  - Feedback visual de sucesso/erro após salvar
+  - Manter o design e estilo visual já existente na página /account
+
+---
+
+REGRAS IMPORTANTES:
+1. NÃO alterar nenhum campo existente na tabela users
+2. NÃO alterar nenhuma rota de autenticação existente
+3. NÃO alterar a lógica de login ou registro
+4. Todos os novos campos são opcionais — usuários existentes 
+   continuam funcionando sem nenhuma alteração
+5. Após concluir, confirmar que npm run dev inicia sem erros
+6. Criar um checkpoint ao final

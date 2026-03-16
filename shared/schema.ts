@@ -16,6 +16,15 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false),
   emailVerifiedAt: text("email_verified_at"),
   phone: text("phone"),
+  fullName: text("full_name"),
+  cpfCnpj: text("cpf_cnpj"),
+  addressStreet: text("address_street"),
+  addressNumber: text("address_number"),
+  addressComplement: text("address_complement"),
+  addressNeighborhood: text("address_neighborhood"),
+  addressCity: text("address_city"),
+  addressState: text("address_state"),
+  addressZip: text("address_zip"),
   consentMarketing: boolean("consent_marketing").default(false),
   consentTerms: boolean("consent_terms").default(false),
   consentPrivacy: boolean("consent_privacy").default(false),
@@ -38,6 +47,20 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export const updateUserProfileSchema = z.object({
+  fullName: z.string().optional(),
+  cpfCnpj: z.string().optional(),
+  phone: z.string().optional(),
+  addressStreet: z.string().optional(),
+  addressNumber: z.string().optional(),
+  addressComplement: z.string().optional(),
+  addressNeighborhood: z.string().optional(),
+  addressCity: z.string().optional(),
+  addressState: z.string().optional(),
+  addressZip: z.string().optional(),
+});
+export type UpdateUserProfile = z.infer<typeof updateUserProfileSchema>;
 
 // Registration validation schema
 export const registerUserSchema = z.object({
