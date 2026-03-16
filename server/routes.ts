@@ -501,8 +501,15 @@ export async function registerRoutes(
             verificationToken,
             baseUrl,
           );
-        } catch (emailErr) {
+        } catch (emailErr: any) {
           console.error("Failed to send verification email:", emailErr);
+          sendAdminNotification('email_failure', {
+            email: user.email || email,
+            reason: 'verification_email_failed',
+            error: emailErr?.message || 'Unknown error',
+          }).catch((notifErr) =>
+            console.error("Failed to send admin notification for email failure:", notifErr),
+          );
         }
 
         // Log audit event
