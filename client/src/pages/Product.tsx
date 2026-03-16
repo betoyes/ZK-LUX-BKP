@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useRoute, Link, useSearch, useLocation } from 'wouter';
 import { useProducts } from '@/context/ProductContext';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, ArrowRight, Ruler, Gem } from 'lucide-react';
+import { ArrowLeft, Plus, ArrowRight, Ruler, Gem, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import StoneSelector, { hasStoneVariations, getStonePrice, getStoneOptions, getStoneLabel } from '@/components/StoneSelector';
 
@@ -33,6 +34,8 @@ export default function Product() {
   const [mainImage, setMainImage] = useState('');
   const [selectedVersion, setSelectedVersion] = useState(0);
   const [selectedStoneType, setSelectedStoneType] = useState(stoneFromUrl || 'main');
+  const { isAuthenticated } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const product = match ? products.find(p => p.id === parseInt(params.id)) : null;
   
@@ -148,6 +151,10 @@ export default function Product() {
 
   const handleBuyNow = () => {
     addToCart(product.id, 1, selectedStoneType);
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
     navigate('/checkout');
   };
 
@@ -619,6 +626,50 @@ export default function Product() {
           </div>
         )}
       </div>
-    </div>
+    
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="auth-modal-overlay">
+          <div className="bg-white w-full max-w-md mx-4 p-0 border border-border shadow-2xl" data-testid="auth-modal">
+            <div className="bg-black text-white px-8 py-6">
+              <h2 className="font-display text-2xl font-bold tracking-tight">Acesse sua conta</h2>
+              <p className="font-mono text-xs uppercase tracking-widest mt-1 text-white/70">
+                Para uma experiência personalizada
+              </p>
+            </div>
+            <div className="p-8 space-y-4">
+              <p className="text-sm text-muted-foreground mb-6">
+                Entre na sua conta ou crie uma nova para finalizar sua compra com segurança, acompanhar seus pedidos e salvar seus dados para compras futuras.
+              </p>
+              <Link href="/login">
+                <Button
+                  className="w-full rounded-none h-12 bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs flex items-center justify-center gap-2"
+                  data-testid="auth-modal-login"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Entrar na Conta
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button
+                  variant="outline"
+                  className="w-full rounded-none h-12 border-black text-black hover:bg-black hover:text-white uppercase tracking-widest font-mono text-xs flex items-center justify-center gap-2"
+                  data-testid="auth-modal-register"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Criar Conta
+                </Button>
+              </Link>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full text-center font-mono text-xs text-muted-foreground hover:text-foreground uppercase tracking-widest mt-4 py-2"
+                data-testid="auth-modal-close"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 }
