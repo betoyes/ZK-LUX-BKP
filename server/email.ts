@@ -223,45 +223,45 @@ export async function sendAdminNotification(
   }
 }
 
-  export async function sendOrderConfirmationEmail(params: {
-    customerEmail: string;
-    customerName: string;
-    orderId: string;
-    items: any;
-    total: number;
-    billingType: string;
-    paymentDate: string;
-  }) {
-    const { customerEmail, customerName, orderId, items, total, billingType, paymentDate } = params;
+export async function sendOrderConfirmationEmail(params: {
+  customerEmail: string;
+  customerName: string;
+  orderId: string;
+  items: any;
+  total: number;
+  billingType: string;
+  paymentDate: string;
+}) {
+  const { customerEmail, customerName, orderId, items, total, billingType, paymentDate } = params;
 
-    try {
-      const { client, fromEmail } = await getResendClient();
+  try {
+    const { client, fromEmail } = await getResendClient();
 
-      const totalFormatted = (total / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      const paymentMethod = billingType === 'PIX' ? 'PIX' : 'Cartão de Crédito';
-      const formattedDate = paymentDate || new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const totalFormatted = (total / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const paymentMethod = billingType === 'PIX' ? 'PIX' : 'Cartão de Crédito';
+    const formattedDate = paymentDate || new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-      const itemsHtml = Array.isArray(items) && items.length > 0
-        ? items.map((item: any) => `
-            <tr>
-              <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #2c2416; letter-spacing: 0.3px;">
-                ${item.name || item.productName || 'Produto'}
-              </td>
-              <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #2c2416; text-align: center;">
-                ${item.quantity || 1}
-              </td>
-              <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #8b6f3e; text-align: right; font-weight: 500;">
-                ${item.price ? (item.price / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-              </td>
-            </tr>
-          `).join('')
-        : `<tr><td colspan="3" style="padding: 14px 0; font-size: 14px; color: #888; text-align: center;">Detalhes do pedido disponíveis na sua conta.</td></tr>`;
+    const itemsHtml = Array.isArray(items) && items.length > 0
+      ? items.map((item: any) => `
+          <tr>
+            <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #2c2416; letter-spacing: 0.3px;">
+              ${item.name || item.productName || 'Produto'}
+            </td>
+            <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #2c2416; text-align: center;">
+              ${item.quantity || 1}
+            </td>
+            <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #8b6f3e; text-align: right; font-weight: 500;">
+              ${item.price ? (item.price / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+            </td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="3" style="padding: 14px 0; font-size: 14px; color: #888; text-align: center;">Detalhes do pedido disponíveis na sua conta.</td></tr>`;
 
-      const result = await client.emails.send({
-        from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
-        to: [customerEmail],
-        subject: `Pedido confirmado — ZK REZK #${orderId}`,
-        html: `<!DOCTYPE html>
+    const result = await client.emails.send({
+      from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
+      to: [customerEmail],
+      subject: `Pedido confirmado — ZK REZK #${orderId}`,
+      html: `<!DOCTYPE html>
   <html lang="pt-BR">
   <head>
     <meta charset="utf-8">
@@ -398,13 +398,12 @@ export async function sendAdminNotification(
 
   </body>
   </html>`,
-      });
+    });
 
-      console.log(`[Email] Order confirmation sent to ${customerEmail} for order ${orderId}`, result);
-      return result;
-    } catch (error) {
-      console.error(`[Email] Failed to send order confirmation to ${customerEmail}:`, error);
-    }
+    console.log(`[Email] Order confirmation sent to ${customerEmail} for order ${orderId}`, result);
+    return result;
+  } catch (error) {
+    console.error(`[Email] Failed to send order confirmation to ${customerEmail}:`, error);
   }
 }
 
