@@ -198,6 +198,19 @@ export async function registerRoutes(
     }
   }
 
+  // Validate ASAAS_SANDBOX in production — must be explicitly set to "false".
+  // The default in server/asaas.ts is sandbox-on (treats anything other than
+  // "false" as sandbox), which would expose the public POST
+  // /api/payments/:paymentId/simulate-payment endpoint and allow attackers to
+  // mark orders as paid without settlement. Fail closed at startup.
+  if (process.env.NODE_ENV === "production") {
+    if (process.env.ASAAS_SANDBOX !== "false") {
+      throw new Error(
+        'ASAAS_SANDBOX must be explicitly set to "false" in production to disable sandbox payment simulation.',
+      );
+    }
+  }
+
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret) {
     throw new Error("SESSION_SECRET environment variable is required");
@@ -3016,10 +3029,35 @@ Sitemap: ${baseUrl}/sitemap.xml
     },
   );
 
-  // Sandbox: Simulate payment confirmation (only in sandbox mode)
+  // Sandbox: Simulate payment confirmation.
+  //
+  // Defense in depth:
+  //   1. Hard 404 in production — the route does not exist outside non-prod
+  //      environments, regardless of ASAAS_SANDBOX. Startup also enforces
+  //      ASAAS_SANDBOX=false in production, so this is belt-and-suspenders.
+  //   2. requireAuth — anonymous callers cannot confirm payments.
+  //   3. csrfProtection — state-mutating endpoint, must include the session
+  //      CSRF token like every other authenticated mutation.
+  //   4. Ownership check — only the payment's owner (or admin) may simulate
+  //      its confirmation, even within a test environment. Returns 404 (not
+  //      403) on mismatch to avoid leaking the existence of other users'
+  //      payment IDs (which are predictable serial integers).
+  //   5. isSandboxMode() — final guard against the asaas client being in
+  //      production mode regardless of the route being reachable.
   app.post(
     "/api/payments/:paymentId/simulate-payment",
+    // Production hard-block runs FIRST — before paymentLimiter — so that even
+    // high-rate callers in production receive 404 (not 429). 429 would leak
+    // the existence of this route.
+    (req: Request, res: Response, next: NextFunction) => {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(404).json({ message: "Não encontrado" });
+      }
+      next();
+    },
     paymentLimiter,
+    requireAuth,
+    csrfProtection,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         if (!asaas.isSandboxMode()) {
@@ -3028,10 +3066,21 @@ Sitemap: ${baseUrl}/sitemap.xml
           });
         }
 
-        const localPayment = await storage.getAsaasPaymentById(
-          parseInt(req.params.paymentId),
-        );
+        const paymentIdNum = parseInt(req.params.paymentId, 10);
+        if (!Number.isInteger(paymentIdNum) || paymentIdNum <= 0) {
+          return res.status(404).json({ message: "Pagamento não encontrado" });
+        }
+
+        const localPayment = await storage.getAsaasPaymentById(paymentIdNum);
         if (!localPayment) {
+          return res.status(404).json({ message: "Pagamento não encontrado" });
+        }
+
+        // Ownership check — only the payment's owner (or admin) may simulate
+        // confirmation. requireAuth guarantees req.user is present.
+        const reqUser = req.user!;
+        const isAdmin = reqUser.role === "admin";
+        if (!isAdmin && localPayment.userId !== reqUser.id) {
           return res.status(404).json({ message: "Pagamento não encontrado" });
         }
 

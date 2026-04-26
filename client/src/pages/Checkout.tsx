@@ -472,8 +472,13 @@ export default function Checkout() {
     if (!pixData || !paymentConfig?.sandbox) return;
 
     try {
+      const csrfToken = getCsrfToken();
       const response = await fetch(`/api/payments/${pixData.paymentId}/simulate-payment`, {
         method: 'POST',
+        headers: {
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
+        credentials: 'include',
       });
       const data = await response.json();
 
