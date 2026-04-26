@@ -72,16 +72,21 @@
 
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
-- Confirmed production-impact issues in the current code are concentrated in four areas:
+- Confirmed production-impact issues in the current code are concentrated in these areas:
+  - soft-deleted accounts remain login-capable because auth paths do not enforce `deletedAt`
+  - LGPD deletion/anonymization only revoke the current session, not all active sessions
+  - the sandbox payment-simulation endpoint is publicly callable when `ASAAS_SANDBOX` is left at the code's insecure default
+  - user-controlled fields are interpolated into operator notification emails without HTML escaping
+- Re-validated as fixed and not reproposed:
   - host-header injection into password-reset and verification emails
   - missing session revocation after an authenticated password change
-  - globally oversized request-body parsing that exposes public endpoints to denial of service
-  - full API-response logging that copies PII, CSRF tokens, payment data, and LGPD export data into logs
-- Re-validated as fixed and not reproposed:
+  - globally oversized request-body parsing that exposed public endpoints to denial of service
+  - full API-response logging that copied PII, CSRF tokens, payment data, and LGPD export data into logs
   - prior client-trusted payment totals
   - prior payment-status ownership gap / payment IDOR concerns
   - production webhook authentication for Asaas when properly configured
 - Reviewed but not proposed this scan:
-  - sandbox payment-simulation route because it is config-dependent and production reachability was not demonstrated
+  - `GET /api/payments/config` sandbox disclosure because it is mainly supportive/derivative once the payment-simulation route is fixed
+  - missing explicit CSRF middleware on admin mutation routes because the production session cookie is explicitly `SameSite=Lax`, and no production-reachable bypass was demonstrated beyond unsupported browser assumptions
   - admin-controlled product-media MIME issues because they did not create a meaningful new privilege boundary beyond existing admin control
   - `?full=true` product responses because the underlying media is already public and the remaining concern is mainly performance/design intent rather than a strong confidentiality issue
