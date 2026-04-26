@@ -35,6 +35,7 @@ import {
 } from "./email";
 import { validatePassword, isPasswordValid } from "../shared/passwordStrength";
 import * as asaas from "./asaas";
+import { calculateShippingFromCep, calculateInstallmentWithInterest } from "./pricing";
 
 // Rate limiters for authentication routes
 const loginLimiter = rateLimit({
@@ -1771,8 +1772,14 @@ export async function registerRoutes(
 
   app.get("/api/orders", requireAuth, async (req, res, next) => {
     try {
-      const orders = await storage.getOrders();
-      res.json(orders);
+      const user = (req as any).user;
+      let orderList;
+      if (user?.role === "admin") {
+        orderList = await storage.getOrders();
+      } else {
+        orderList = await storage.getOrdersByUserId(user.id);
+      }
+      res.json(orderList);
     } catch (err) {
       next(err);
     }
@@ -2603,6 +2610,30 @@ Sitemap: ${baseUrl}/sitemap.xml
 
         const data = validationResult.data;
 
+        // Compute server-side total from authoritative product prices + shipping
+        let serverSubtotal = 0;
+        for (const item of data.cartItems) {
+          const product = await storage.getProductById(item.productId);
+          if (!product) {
+            return res.status(400).json({ message: `Produto não encontrado: ${item.productId}` });
+          }
+          let itemPrice = product.price;
+          if (item.stoneType && product.stoneVariations) {
+            try {
+              const variations = JSON.parse(product.stoneVariations) as Array<{ name: string; price: number }>;
+              const variation = variations.find((v) => v.name === item.stoneType);
+              if (variation && variation.price > 0) {
+                itemPrice = variation.price;
+              }
+            } catch {
+              // fall back to base price
+            }
+          }
+          serverSubtotal += itemPrice * item.quantity;
+        }
+        const serverShipping = calculateShippingFromCep(data.postalCode);
+        const serverTotal = serverSubtotal + serverShipping;
+
         // Create or get Asaas customer
         const asaasCustomer = await asaas.createOrGetAsaasCustomer({
           name: data.name,
@@ -2626,8 +2657,8 @@ Sitemap: ${baseUrl}/sitemap.xml
           });
         }
 
-        // Create PIX payment
-        const payment = await asaas.createPixPayment(asaasCustomer.id, data);
+        // Create PIX payment using server-computed total
+        const payment = await asaas.createPixPayment(asaasCustomer.id, data, serverTotal);
 
         // Get QR Code
         const qrCode = await asaas.getPixQrCode(payment.id);
@@ -2639,7 +2670,7 @@ Sitemap: ${baseUrl}/sitemap.xml
           asaasPaymentId: payment.id,
           userId,
           billingType: "PIX",
-          value: Math.round(data.value),
+          value: serverTotal,
           status: payment.status,
           dueDate: payment.dueDate,
           invoiceUrl: payment.invoiceUrl,
@@ -2648,11 +2679,16 @@ Sitemap: ${baseUrl}/sitemap.xml
           createdAt: new Date().toISOString(),
         });
 
+        // Register payment in session so the same browser can poll status (guest checkout)
+        const sess = (req as any).session;
+        if (sess) {
+          sess.allowedPaymentIds = [...(sess.allowedPaymentIds || []), localPayment.id];
+        }
+
         // Create order record
         const randomDigits = Math.floor(1000 + Math.random() * 9000);
         const orderId = `ZK-${Date.now()}-${randomDigits}`;
-        const cartItems = data.cartItems || [];
-        const totalItems = cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
+        const totalItems = data.cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
         try {
           await storage.createOrder({
             orderId,
@@ -2660,7 +2696,7 @@ Sitemap: ${baseUrl}/sitemap.xml
             customer: data.name,
             date: new Date().toISOString(),
             status: "pending",
-            total: Math.round(data.value),
+            total: serverTotal,
             items: totalItems || 1,
             paymentId: localPayment.id,
           });
@@ -2672,7 +2708,7 @@ Sitemap: ${baseUrl}/sitemap.xml
         sendAdminNotification("order", {
           email: data.email,
           name: data.name,
-          total: Math.round(data.value),
+          total: serverTotal,
           orderId,
           items: totalItems || 1,
         }).catch((err) => console.error("Failed to send order notification:", err));
@@ -2718,6 +2754,33 @@ Sitemap: ${baseUrl}/sitemap.xml
         const data = validationResult.data;
         const remoteIp = getClientIp(req) || "127.0.0.1";
 
+        // Compute server-side total from authoritative product prices + shipping + interest
+        let ccServerSubtotal = 0;
+        for (const item of data.cartItems) {
+          const product = await storage.getProductById(item.productId);
+          if (!product) {
+            return res.status(400).json({ message: `Produto não encontrado: ${item.productId}` });
+          }
+          let itemPrice = product.price;
+          if (item.stoneType && product.stoneVariations) {
+            try {
+              const variations = JSON.parse(product.stoneVariations) as Array<{ name: string; price: number }>;
+              const variation = variations.find((v) => v.name === item.stoneType);
+              if (variation && variation.price > 0) {
+                itemPrice = variation.price;
+              }
+            } catch {
+              // fall back to base price
+            }
+          }
+          ccServerSubtotal += itemPrice * item.quantity;
+        }
+        const ccServerShipping = calculateShippingFromCep(data.postalCode);
+        const ccServerBase = ccServerSubtotal + ccServerShipping;
+        const ccInstallments = data.installmentCount && data.installmentCount > 1 ? data.installmentCount : 1;
+        const { installmentValue: ccInstallmentValue, totalWithInterest: ccServerTotal } =
+          calculateInstallmentWithInterest(ccServerBase, ccInstallments);
+
         // Create or get Asaas customer
         const asaasCustomer = await asaas.createOrGetAsaasCustomer({
           name: data.name,
@@ -2741,11 +2804,12 @@ Sitemap: ${baseUrl}/sitemap.xml
           });
         }
 
-        // Create Credit Card payment
+        // Create Credit Card payment using server-computed total
         const payment = await asaas.createCreditCardPayment(
           asaasCustomer.id,
           data,
           remoteIp,
+          ccServerTotal,
         );
 
         // Save payment locally
@@ -2755,7 +2819,7 @@ Sitemap: ${baseUrl}/sitemap.xml
           asaasPaymentId: payment.id,
           userId: ccUserId,
           billingType: "CREDIT_CARD",
-          value: Math.round(data.value),
+          value: ccServerTotal,
           status: payment.status,
           dueDate: payment.dueDate,
           paymentDate: payment.paymentDate,
@@ -2765,11 +2829,16 @@ Sitemap: ${baseUrl}/sitemap.xml
           createdAt: new Date().toISOString(),
         });
 
+        // Register payment in session so the same browser can poll status (guest checkout)
+        const ccSess = (req as any).session;
+        if (ccSess) {
+          ccSess.allowedPaymentIds = [...(ccSess.allowedPaymentIds || []), localPayment.id];
+        }
+
         // Create order record
         const ccRandomDigits = Math.floor(1000 + Math.random() * 9000);
         const ccOrderId = `ZK-${Date.now()}-${ccRandomDigits}`;
-        const ccCartItems = data.cartItems || [];
-        const ccTotalItems = ccCartItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
+        const ccTotalItems = data.cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
         try {
           await storage.createOrder({
             orderId: ccOrderId,
@@ -2777,7 +2846,7 @@ Sitemap: ${baseUrl}/sitemap.xml
             customer: data.name,
             date: new Date().toISOString(),
             status: "pending",
-            total: Math.round(data.value),
+            total: ccServerTotal,
             items: ccTotalItems || 1,
             paymentId: localPayment.id,
           });
@@ -2789,7 +2858,7 @@ Sitemap: ${baseUrl}/sitemap.xml
         sendAdminNotification("order", {
           email: data.email,
           name: data.name,
-          total: Math.round(data.value),
+          total: ccServerTotal,
           orderId: ccOrderId,
           items: ccTotalItems || 1,
         }).catch((err) => console.error("Failed to send order notification:", err));
@@ -2801,6 +2870,11 @@ Sitemap: ${baseUrl}/sitemap.xml
           invoiceUrl: payment.invoiceUrl,
           creditCardLastDigits: payment.creditCard?.creditCardNumber,
           creditCardBrand: payment.creditCard?.creditCardBrand,
+          subtotal: ccServerSubtotal,
+          shipping: ccServerShipping,
+          installmentCount: ccInstallments,
+          installmentValue: ccInstallmentValue,
+          total: ccServerTotal,
         });
       } catch (err: any) {
         console.error("Error creating Credit Card payment:", err);
@@ -2814,12 +2888,33 @@ Sitemap: ${baseUrl}/sitemap.xml
   // Get payment status
   app.get(
     "/api/payments/:paymentId/status",
+    paymentLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const localPayment = await storage.getAsaasPaymentById(
-          parseInt(req.params.paymentId),
-        );
+        const paymentIdNum = parseInt(req.params.paymentId, 10);
+        if (!Number.isInteger(paymentIdNum) || paymentIdNum <= 0) {
+          return res.status(404).json({ message: "Pagamento não encontrado" });
+        }
+        const reqUser = (req as any).user;
+        const sessionAllowed: number[] = (req as any).session?.allowedPaymentIds || [];
+
+        // Allow access if: admin, authenticated owner, or same session that created it
+        const isAdmin = reqUser?.role === "admin";
+        const isSessionOwner = sessionAllowed.includes(paymentIdNum);
+        const isAuthenticated = req.isAuthenticated?.();
+
+        if (!isAdmin && !isSessionOwner && !isAuthenticated) {
+          return res.status(401).json({ message: "Não autenticado" });
+        }
+
+        const localPayment = await storage.getAsaasPaymentById(paymentIdNum);
         if (!localPayment) {
+          return res.status(404).json({ message: "Pagamento não encontrado" });
+        }
+
+        // For authenticated non-admin users, enforce ownership
+        // Return 404 (not 403) to avoid leaking existence of other users' payments
+        if (isAuthenticated && !isAdmin && !isSessionOwner && localPayment.userId !== reqUser?.id) {
           return res.status(404).json({ message: "Pagamento não encontrado" });
         }
 

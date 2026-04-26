@@ -103,7 +103,8 @@ export async function createOrGetAsaasCustomer(data: {
 
 export async function createPixPayment(
   customerId: string,
-  data: CreatePixPayment
+  data: CreatePixPayment,
+  valueInCents: number
 ): Promise<AsaasPaymentResponse> {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -114,7 +115,7 @@ export async function createPixPayment(
     body: JSON.stringify({
       customer: customerId,
       billingType: 'PIX',
-      value: data.value / 100,
+      value: valueInCents / 100,
       dueDate,
       description: data.description || 'Pagamento via PIX',
     }),
@@ -131,7 +132,8 @@ export async function getPixQrCode(paymentId: string): Promise<AsaasPixQrCodeRes
 export async function createCreditCardPayment(
   customerId: string,
   data: CreateCreditCardPayment,
-  remoteIp: string
+  remoteIp: string,
+  valueInCents: number
 ): Promise<AsaasPaymentResponse> {
   const today = new Date();
   const dueDate = today.toISOString().split('T')[0];
@@ -139,7 +141,7 @@ export async function createCreditCardPayment(
   const paymentData: any = {
     customer: customerId,
     billingType: 'CREDIT_CARD',
-    value: data.value / 100,
+    value: valueInCents / 100,
     dueDate,
     description: data.description || 'Pagamento via Cartão de Crédito',
     creditCard: {
@@ -164,10 +166,7 @@ export async function createCreditCardPayment(
 
   if (data.installmentCount && data.installmentCount > 1) {
     paymentData.installmentCount = data.installmentCount;
-    // Se installmentValue foi passado (com juros), use-o; senão, divide sem juros
-    paymentData.installmentValue = data.installmentValue 
-      ? data.installmentValue / 100  // Frontend envia em centavos
-      : (data.value / 100) / data.installmentCount;
+    paymentData.installmentValue = (valueInCents / 100) / data.installmentCount;
   }
 
   const payment = await asaasRequest('/payments', {

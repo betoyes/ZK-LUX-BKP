@@ -322,13 +322,12 @@ export default function Checkout() {
           name: `${customerData.firstName} ${customerData.lastName}`,
           cpfCnpj: customerData.cpfCnpj.replace(/\D/g, ''),
           phone: customerData.phone.replace(/\D/g, ''),
-          value: subtotal + (shipping?.price || 0),
+          postalCode: customerData.zip.replace(/\D/g, ''),
           description: 'Compra na joalheria',
           cartItems: cartItems.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
             name: item.name,
-            price: item.price,
             stoneType: item.stoneType,
           })),
         }),
@@ -375,7 +374,6 @@ export default function Checkout() {
           name: `${customerData.firstName} ${customerData.lastName}`,
           cpfCnpj: customerData.cpfCnpj.replace(/\D/g, ''),
           phone: customerData.phone.replace(/\D/g, ''),
-          value: subtotal + shipping.price,
           description: 'Compra na joalheria',
           postalCode: customerData.zip.replace(/\D/g, ''),
           addressNumber: customerData.addressNumber,
@@ -388,14 +386,10 @@ export default function Checkout() {
             ccv: cardData.cvc,
           },
           installmentCount: installments,
-          installmentValue: installments > 1 
-            ? calculateInstallmentWithInterest(subtotal + shipping.price, installments).installmentValue 
-            : undefined,
           cartItems: cartItems.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
             name: item.name,
-            price: item.price,
             stoneType: item.stoneType,
           })),
         }),

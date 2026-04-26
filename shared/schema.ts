@@ -363,15 +363,15 @@ export const createPixPaymentSchema = z.object({
   name: z.string().min(2, "Nome é obrigatório"),
   cpfCnpj: z.string().min(11, "CPF/CNPJ inválido"),
   phone: z.string().optional(),
-  value: z.number().positive("Valor deve ser positivo"),
+  postalCode: z.string().regex(/^\d{8}$/, "CEP inválido (informe 8 dígitos numéricos)"),
   description: z.string().optional(),
   cartItems: z.array(z.object({
     productId: z.number(),
-    quantity: z.number(),
+    quantity: z.number().min(1),
     name: z.string(),
-    price: z.number(),
+    price: z.number().optional(),
     stoneType: z.string().optional(),
-  })).optional(),
+  })).min(1, "Carrinho não pode estar vazio"),
 });
 export type CreatePixPayment = z.infer<typeof createPixPaymentSchema>;
 
@@ -380,9 +380,8 @@ export const createCreditCardPaymentSchema = z.object({
   name: z.string().min(2, "Nome é obrigatório"),
   cpfCnpj: z.string().min(11, "CPF/CNPJ inválido"),
   phone: z.string().optional(),
-  value: z.number().positive("Valor deve ser positivo"),
   description: z.string().optional(),
-  postalCode: z.string().min(8, "CEP inválido"),
+  postalCode: z.string().regex(/^\d{8}$/, "CEP inválido (informe 8 dígitos numéricos)"),
   addressNumber: z.string().min(1, "Número do endereço é obrigatório"),
   addressComplement: z.string().optional(),
   creditCard: z.object({
@@ -393,13 +392,12 @@ export const createCreditCardPaymentSchema = z.object({
     ccv: z.string().min(3, "CVC inválido"),
   }),
   installmentCount: z.number().min(1).max(12).optional(),
-  installmentValue: z.number().positive().optional(),
   cartItems: z.array(z.object({
     productId: z.number(),
-    quantity: z.number(),
+    quantity: z.number().min(1),
     name: z.string(),
-    price: z.number(),
+    price: z.number().optional(),
     stoneType: z.string().optional(),
-  })).optional(),
+  })).min(1, "Carrinho não pode estar vazio"),
 });
 export type CreateCreditCardPayment = z.infer<typeof createCreditCardPaymentSchema>;
