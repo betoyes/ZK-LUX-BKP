@@ -183,6 +183,14 @@ export async function getPaymentStatus(paymentId: string): Promise<AsaasPaymentR
 }
 
 export async function confirmSandboxPayment(paymentId: string, paymentValue?: number): Promise<AsaasPaymentResponse> {
+  // Defense in depth: refuse to simulate confirmation in production regardless
+  // of ASAAS_SANDBOX. Even if every routing guard above this is bypassed or
+  // accidentally removed, the underlying client must never fabricate a paid
+  // status in production. Pairs with the startup guard in server/routes.ts
+  // that requires ASAAS_SANDBOX=false in production.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Sandbox payment simulation is disabled in production');
+  }
   if (process.env.ASAAS_SANDBOX !== 'false') {
     // In sandbox mode, simulate payment confirmation
     // The receiveInCash endpoint requires a minimum value of R$1.00
