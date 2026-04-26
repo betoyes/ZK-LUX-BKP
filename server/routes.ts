@@ -1073,7 +1073,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/categories", requireAuth, async (req, res, next) => {
+  app.post("/api/categories", requireAdmin, async (req, res, next) => {
     try {
       const data = insertCategorySchema.parse(req.body);
       const category = await storage.createCategory(data);
@@ -1083,7 +1083,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/categories/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/categories/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const category = await storage.updateCategory(id, req.body);
@@ -1096,7 +1096,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/categories/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/categories/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
 
@@ -1142,7 +1142,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/collections", requireAuth, async (req, res, next) => {
+  app.post("/api/collections", requireAdmin, async (req, res, next) => {
     try {
       const data = insertCollectionSchema.parse(req.body);
       const collection = await storage.createCollection(data);
@@ -1152,7 +1152,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/collections/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/collections/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const collection = await storage.updateCollection(id, req.body);
@@ -1165,7 +1165,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/collections/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/collections/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCollection(id);
@@ -1561,7 +1561,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/journal", requireAuth, async (req, res, next) => {
+  app.post("/api/journal", requireAdmin, async (req, res, next) => {
     try {
       const data = insertJournalPostSchema.parse(req.body);
       const post = await storage.createJournalPost(data);
@@ -1571,7 +1571,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/journal/:id", requireAuth, async (req, res, next) => {
+  app.patch("/api/journal/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const post = await storage.updateJournalPost(id, req.body);
@@ -1584,7 +1584,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/journal/:id", requireAuth, async (req, res, next) => {
+  app.delete("/api/journal/:id", requireAdmin, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteJournalPost(id);
@@ -1881,7 +1881,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/branding", requireAuth, async (req, res, next) => {
+  app.post("/api/branding", requireAdmin, async (req, res, next) => {
     try {
       const data = insertBrandingSchema.parse(req.body);
       const branding = await storage.createOrUpdateBranding(data);
