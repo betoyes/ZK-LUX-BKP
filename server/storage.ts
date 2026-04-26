@@ -19,7 +19,7 @@ import {
   type AsaasPayment, type InsertAsaasPayment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, isNotNull, asc, and, gt, gte, sql } from "drizzle-orm";
+import { eq, desc, isNotNull, isNull, asc, and, gt, gte, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -155,7 +155,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db.select().from(users).where(
+      and(eq(users.username, username), isNull(users.deletedAt))
+    );
     return user || undefined;
   }
 

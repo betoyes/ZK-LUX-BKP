@@ -303,7 +303,7 @@ export async function registerRoutes(
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await storage.getUser(id);
-      if (!user) {
+      if (!user || user.deletedAt || user.anonymizedAt) {
         return done(null, false);
       }
       done(null, { id: user.id, username: user.username, role: user.role });
@@ -2365,10 +2365,12 @@ export async function registerRoutes(
           email: user.email,
         });
 
-        // Invalidate session
-        req.logout(() => {
-          req.session?.destroy(() => {});
-        });
+        // Revoke ALL active sessions for this user across all devices so that
+        // stolen session cookies or sessions on other devices are evicted immediately.
+        await pool.query(
+          `DELETE FROM session WHERE sess::jsonb -> 'passport' -> 'user' = to_jsonb($1::int)`,
+          [userId],
+        );
 
         res.json({
           message: responseMessage,
