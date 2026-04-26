@@ -69,16 +69,34 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    limit: '50mb',
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
+// Admin product routes (POST /api/products, PATCH /api/products/:id) need large
+// limits for base64-encoded image uploads. All other routes – including public
+// unauthenticated endpoints – are capped at 100 kb to prevent DoS via oversized
+// request bodies. This check must happen here, before any body parsing occurs,
+// because Express rejects over-limit bodies before route handlers run.
+const LARGE_BODY_PATHS = /^\/api\/products(\/\d+)?$/;
+const LARGE_BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+const smallJsonParser = express.json({
+  limit: '100kb',
+  verify: (req: any, _res: any, buf: Buffer) => { req.rawBody = buf; },
+});
+const largeJsonParser = express.json({
+  limit: '50mb',
+  verify: (req: any, _res: any, buf: Buffer) => { req.rawBody = buf; },
+});
+const smallUrlencodedParser = express.urlencoded({ extended: false, limit: '100kb' });
+const largeUrlencodedParser = express.urlencoded({ extended: false, limit: '50mb' });
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const useLarge = LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method);
+  return (useLarge ? largeJsonParser : smallJsonParser)(req, res, next);
+});
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const useLarge = LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method);
+  return (useLarge ? largeUrlencodedParser : smallUrlencodedParser)(req, res, next);
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -94,22 +112,11 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
+      const logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       log(logLine);
     }
   });
