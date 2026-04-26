@@ -3,7 +3,7 @@
 ## Application summary
 - Production app is a TypeScript monolith with a React/Vite frontend in `client/` and an Express/PostgreSQL backend in `server/`.
 - The production entry point is `server/index.ts`, which serves the API and the built frontend.
-- Core security-sensitive logic lives in `server/routes.ts`, with persistence in `server/storage.ts` and schemas in `shared/schema.ts`.
+- Core security-sensitive logic lives in `server/routes.ts`, with persistence in `server/storage.ts`, request parsing and logging in `server/index.ts`, payment integration in `server/asaas.ts`, and email delivery in `server/email.ts`.
 
 ## Production-scope assumptions
 - Only production-reachable behavior is in scope.
@@ -19,6 +19,7 @@
 - Order and payment records
 - Payment operations through Asaas
 - Brand content shown on the public storefront
+- Application logs, which may contain security-relevant data if debug logging is left enabled
 
 ## Trust boundaries
 1. Browser ↔ Express API (`/api/*`)
@@ -26,16 +27,20 @@
 3. Express ↔ PostgreSQL via Drizzle in `server/storage.ts`
 4. Express ↔ external services: Asaas (`server/asaas.ts`) and Resend (`server/email.ts`)
 5. Public storefront data vs admin-only content management operations
+6. Application ↔ production log sink / observability tooling
 
 ## Roles
 - Anonymous visitor
 - Authenticated customer
 - Authenticated admin
 - External payment provider webhook caller
+- Internal operator with application-log access
 
 ## In-scope attack surfaces
 - Authentication and session management in `server/routes.ts`
 - Authorization middleware and route-level access control in `server/routes.ts`
+- Account recovery and email-link generation in `server/routes.ts` and `server/email.ts`
+- Request parsing, logging, and middleware ordering in `server/index.ts`
 - Payment creation, payment status, and webhook flows in `server/routes.ts` and `server/asaas.ts`
 - User privacy / LGPD endpoints in `server/routes.ts` and `server/storage.ts`
 - Content-management endpoints for products, categories, collections, journal, branding, subscribers, customers, and orders
@@ -45,25 +50,38 @@
 - Development-only Vite middleware in `server/vite.ts`
 - Build scripts and generated artifacts, including `dist/`
 - Static screenshots / assets in the repository
-- Sandbox-only payment simulation routes when they are unavailable in production
+- Sandbox-only payment simulation behavior unless production reachability is demonstrated
 - Pure UX bugs without a security impact
+- Admin-only content shaping that does not create a meaningful new privilege boundary or external exploit path
 
 ## Threat priorities for this scan
 1. Broken access control between customer and admin capabilities
-2. Data exposure across tenant / user boundaries
-3. Payment and order business-logic abuse
-4. Weak webhook validation or payment state manipulation
-5. Account recovery / session invalidation failures
-6. Injection into emails or browser-rendered content where production exploitability is realistic
+2. Data exposure across user, operator, or log-access boundaries
+3. Account recovery / session invalidation failures
+4. Payment and order business-logic abuse
+5. Weak webhook validation or payment state manipulation
+6. Availability risks on public API boundaries
 
 ## Scan anchors
-- `server/routes.ts`: `requireAuth`, `requireAdmin`, auth flows, `/api/orders`, `/api/payments/*`, `/api/webhooks/asaas`, content-management routes
-- `server/storage.ts`: `getOrders`, payment lookup methods, LGPD aggregation methods
+- `server/index.ts`: body-parser limits, response logging, production middleware ordering
+- `server/routes.ts`: `requireAuth`, `requireAdmin`, auth flows, `/api/orders`, `/api/payments/*`, `/api/webhooks/asaas`, LGPD routes, content-management routes
+- `server/storage.ts`: payment lookup methods, LGPD aggregation methods, session-related data access patterns
 - `shared/schema.ts`: request validation for auth and payment flows
-- `client/src/pages/Checkout.tsx`: client-controlled payment fields
-- `server/email.ts`: HTML template interpolation
+- `server/email.ts`: security-sensitive link generation and email templates
+- `client/src/pages/Checkout.tsx`: client/payment interaction points to confirm server-side validation
 
 ## Current scan notes
-- Deterministic scan output currently includes noisy findings against generated/minified code and needs manual triage.
-- Confirmed production issues concentrate in three areas: CMS/admin authorization, cross-user order/payment exposure, and client-trusted payment totals.
-- Reviewed but not proposed this scan: low-confidence session fixation hardening, email-client-dependent HTML injection, audit-log IP spoofing, and LGPD export retention concerns without a standalone external exploit chain.
+- Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
+- Confirmed production-impact issues in the current code are concentrated in four areas:
+  - host-header injection into password-reset and verification emails
+  - missing session revocation after an authenticated password change
+  - globally oversized request-body parsing that exposes public endpoints to denial of service
+  - full API-response logging that copies PII, CSRF tokens, payment data, and LGPD export data into logs
+- Re-validated as fixed and not reproposed:
+  - prior client-trusted payment totals
+  - prior payment-status ownership gap / payment IDOR concerns
+  - production webhook authentication for Asaas when properly configured
+- Reviewed but not proposed this scan:
+  - sandbox payment-simulation route because it is config-dependent and production reachability was not demonstrated
+  - admin-controlled product-media MIME issues because they did not create a meaningful new privilege boundary beyond existing admin control
+  - `?full=true` product responses because the underlying media is already public and the remaining concern is mainly performance/design intent rather than a strong confidentiality issue
