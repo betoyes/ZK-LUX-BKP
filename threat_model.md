@@ -11,6 +11,7 @@
 - TLS is provided by the platform.
 - Mockup/dev sandboxes are not deployed to production.
 - Findings should focus on real confidentiality, integrity, and availability impact for production users and operators.
+- The deployment is assumed to sit behind the platform-managed reverse proxy chain that matches `app.set("trust proxy", 1)`; do not treat `X-Forwarded-For` spoofing as exploitable without production evidence that client-supplied header values survive to `req.ip`.
 
 ## Assets
 - User accounts, sessions, passwords, and reset / verification tokens
@@ -53,6 +54,7 @@
 - Sandbox-only payment simulation behavior unless production reachability is demonstrated
 - Pure UX bugs without a security impact
 - Admin-only content shaping that does not create a meaningful new privilege boundary or external exploit path
+- Platform-specific reverse-proxy header handling claims unless the scan shows that forged client headers are actually trusted in production
 
 ## Threat priorities for this scan
 1. Broken access control between customer and admin capabilities
@@ -73,20 +75,25 @@
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - soft-deleted accounts remain login-capable because auth paths do not enforce `deletedAt`
-  - LGPD deletion/anonymization only revoke the current session, not all active sessions
-  - the sandbox payment-simulation endpoint is publicly callable when `ASAAS_SANDBOX` is left at the code's insecure default
-  - user-controlled fields are interpolated into operator notification emails without HTML escaping
+  - `POST /api/subscribers` has no rate limiter and lets anonymous callers trigger unbounded subscriber inserts plus admin notification emails, creating quota, inbox-flood, and availability risk
+  - checkout stores guest `allowedPaymentIds` in the browser session, but logout does not destroy the session and login does not regenerate it, so a later user in the same browser session can read earlier payment-status data
+  - `sendOrderConfirmationEmail` interpolates raw checkout `name` into HTML email content, allowing paid attackers to send branded confirmation emails with injected HTML to recipient addresses they supply at checkout
 - Re-validated as fixed and not reproposed:
+  - deleted or anonymized accounts are blocked from login and deserialization
+  - account deletion, anonymization, and authenticated password changes revoke all active sessions
   - host-header injection into password-reset and verification emails
-  - missing session revocation after an authenticated password change
-  - globally oversized request-body parsing that exposed public endpoints to denial of service
+  - globally oversized request-body parsing on public endpoints
   - full API-response logging that copied PII, CSRF tokens, payment data, and LGPD export data into logs
   - prior client-trusted payment totals
-  - prior payment-status ownership gap / payment IDOR concerns
+  - payment-status ownership checks between distinct authenticated users
   - production webhook authentication for Asaas when properly configured
+  - HTML escaping in admin/operator notification emails
 - Reviewed but not proposed this scan:
   - `GET /api/payments/config` sandbox disclosure because it is mainly supportive/derivative once the payment-simulation route is fixed
   - missing explicit CSRF middleware on admin mutation routes because the production session cookie is explicitly `SameSite=Lax`, and no production-reachable bypass was demonstrated beyond unsupported browser assumptions
   - admin-controlled product-media MIME issues because they did not create a meaningful new privilege boundary beyond existing admin control
   - `?full=true` product responses because the underlying media is already public and the remaining concern is mainly performance/design intent rather than a strong confidentiality issue
+  - missing startup validation for `ASAAS_WEBHOOK_TOKEN` because it is an operator-misconfiguration availability failure, not an external attacker exploit path
+  - storing LGPD export payloads in `data_export_requests.downloadUrl` because it does not materially expand exposure beyond existing database access and was treated as privacy hardening rather than a distinct exploitable vulnerability
+  - `X-Forwarded-For` rate-limit bypass because this scan did not establish that client-supplied forwarded IPs survive the production proxy chain to the actual limiter key
+  - anonymous subscriber `type` selection because it mainly pollutes business funnel data without crossing a meaningful security boundary
