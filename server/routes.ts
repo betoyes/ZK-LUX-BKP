@@ -115,6 +115,24 @@ function getUserAgent(req: Request): string | null {
   return req.headers["user-agent"] || null;
 }
 
+// Helper to get a trusted base URL for security-sensitive emails.
+// Reads APP_URL (required in production) to prevent Host-header injection.
+// Falls back to the request-derived origin only in non-production environments
+// where APP_URL has not been configured (e.g. local development).
+function getTrustedBaseUrl(req: Request): string {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/$/, "");
+  }
+  if (process.env.NODE_ENV === "production") {
+    // Startup already throws when APP_URL is absent in production,
+    // so this branch should never be reached. Fail loudly if it is.
+    throw new Error(
+      "APP_URL must be set in production to build safe email links.",
+    );
+  }
+  return `${req.protocol}://${req.get("host")}`;
+}
+
 // Helper to hash tokens with SHA256
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -154,6 +172,30 @@ export async function registerRoutes(
   // Validate SESSION_SECRET in production
   if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET must be set in production environment");
+  }
+
+  // Validate APP_URL in production — required to build safe email links
+  // that cannot be poisoned via a forged Host header.
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.APP_URL) {
+      throw new Error("APP_URL must be set in production environment");
+    }
+    let parsedAppUrl: URL;
+    try {
+      parsedAppUrl = new URL(process.env.APP_URL);
+    } catch {
+      throw new Error(
+        `APP_URL is not a valid URL: "${process.env.APP_URL}"`,
+      );
+    }
+    if (parsedAppUrl.protocol !== "https:") {
+      throw new Error("APP_URL must use the https protocol in production");
+    }
+    if (parsedAppUrl.pathname !== "/" && parsedAppUrl.pathname !== "") {
+      throw new Error(
+        "APP_URL must be an origin without a path (e.g. https://example.com)",
+      );
+    }
   }
 
   const sessionSecret = process.env.SESSION_SECRET;
@@ -360,7 +402,7 @@ export async function registerRoutes(
           createdAt: new Date().toISOString(),
         });
 
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const baseUrl = getTrustedBaseUrl(req);
         try {
           await sendVerificationEmail(email, verificationToken, baseUrl);
         } catch (emailErr: any) {
@@ -497,7 +539,7 @@ export async function registerRoutes(
         });
 
         // Send verification email
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const baseUrl = getTrustedBaseUrl(req);
         try {
           await sendVerificationEmail(
             user.email || email,
@@ -583,7 +625,7 @@ export async function registerRoutes(
           createdAt: new Date().toISOString(),
         });
 
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const baseUrl = getTrustedBaseUrl(req);
         try {
           await sendPasswordResetEmail(email, resetToken, baseUrl);
         } catch (emailErr) {
@@ -869,6 +911,34 @@ export async function registerRoutes(
 
         const hashedPassword = await bcrypt.hash(newPassword, 12);
         await storage.updateUserPassword(userId, hashedPassword);
+
+        // Revoke ALL active sessions for this user — including the current one.
+        // This ensures that any stolen session cookie (even the one used to
+        // submit this request) becomes invalid immediately after the password
+        // change. The legitimate user is kept logged in via the fresh session
+        // created below.
+        await pool.query(
+          `DELETE FROM session WHERE sess::jsonb -> 'passport' -> 'user' = to_jsonb($1::int)`,
+          [userId],
+        );
+
+        // Regenerate the session so the browser receives a new cookie that is
+        // not present in the session table that was just wiped. Then re-log the
+        // user in on the new session so they stay authenticated.
+        await new Promise<void>((resolve, reject) => {
+          req.session.regenerate((err) => {
+            if (err) return reject(err);
+            resolve();
+          });
+        });
+
+        // req.user is guaranteed by requireAuth middleware; use non-null assertion.
+        await new Promise<void>((resolve, reject) => {
+          req.logIn(req.user!, (err: Error | null) => {
+            if (err) return reject(err);
+            resolve();
+          });
+        });
 
         await logAuditEvent(userId, "change_password", clientIp, userAgent);
 
