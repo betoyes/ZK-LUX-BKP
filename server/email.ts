@@ -1,5 +1,15 @@
 import { Resend } from 'resend';
 
+function escapeHtml(value: string | undefined | null): string {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 let connectionSettings: any;
 
 async function getCredentials() {
@@ -124,16 +134,16 @@ export async function sendAdminNotification(
         subject = '🆕 Novo inscrito na Newsletter - ZK REZK';
         heading = 'Nova inscrição na Newsletter';
         details = `
-          <p><strong>Email:</strong> ${data.email}</p>
-          ${data.name ? `<p><strong>Nome:</strong> ${data.name}</p>` : ''}
+          <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+          ${data.name ? `<p><strong>Nome:</strong> ${escapeHtml(data.name)}</p>` : ''}
         `;
         break;
       case 'lead':
         subject = '🎯 Novo Lead Registrado - ZK REZK';
         heading = 'Novo cadastro no site';
         details = `
-          <p><strong>Email:</strong> ${data.email}</p>
-          ${data.name ? `<p><strong>Nome:</strong> ${data.name}</p>` : ''}
+          <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+          ${data.name ? `<p><strong>Nome:</strong> ${escapeHtml(data.name)}</p>` : ''}
           <p><strong>Tipo:</strong> Lead (registrou-se mas ainda não comprou)</p>
         `;
         break;
@@ -141,8 +151,8 @@ export async function sendAdminNotification(
         subject = '🛍️ Novo Cliente Cadastrado - ZK REZK';
         heading = 'Novo cliente no sistema';
         details = `
-          <p><strong>Nome:</strong> ${data.name || 'Não informado'}</p>
-          <p><strong>Email:</strong> ${data.email}</p>
+          <p><strong>Nome:</strong> ${escapeHtml(data.name) || 'Não informado'}</p>
+          <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
           <p><strong>Tipo:</strong> Cliente</p>
         `;
         break;
@@ -150,9 +160,9 @@ export async function sendAdminNotification(
         subject = '⚠️ Falha no Envio de Email - ZK REZK';
         heading = 'Falha no envio de email';
         details = `
-          <p><strong>Email destinatário:</strong> ${data.email || 'N/A'}</p>
-          <p><strong>Motivo:</strong> ${data.reason || 'Não especificado'}</p>
-          <p><strong>Erro:</strong> ${data.error || 'Não disponível'}</p>
+          <p><strong>Email destinatário:</strong> ${escapeHtml(data.email) || 'N/A'}</p>
+          <p><strong>Motivo:</strong> ${escapeHtml(data.reason) || 'Não especificado'}</p>
+          <p><strong>Erro:</strong> ${escapeHtml(data.error) || 'Não disponível'}</p>
         `;
         break;
       case 'order':
@@ -160,9 +170,9 @@ export async function sendAdminNotification(
         heading = 'Nova venda no site!';
         const totalFormatted = data.total ? (data.total / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A';
         details = `
-          <p><strong>Pedido:</strong> ${data.orderId || 'N/A'}</p>
-          <p><strong>Cliente:</strong> ${data.name || 'Não informado'}</p>
-          <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
+          <p><strong>Pedido:</strong> ${escapeHtml(data.orderId) || 'N/A'}</p>
+          <p><strong>Cliente:</strong> ${escapeHtml(data.name) || 'Não informado'}</p>
+          <p><strong>Email:</strong> ${escapeHtml(data.email) || 'N/A'}</p>
           <p><strong>Total:</strong> ${totalFormatted}</p>
           <p><strong>Itens:</strong> ${data.items || 0}</p>
         `;
