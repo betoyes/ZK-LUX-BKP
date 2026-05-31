@@ -76,9 +76,10 @@
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
   - public authentication endpoints disclose whether an email address exists and whether it is already verified, enabling account enumeration
-  - unauthenticated PIX checkout creates pending local orders and sends admin sale notifications before settlement, enabling fake-order spam and business-metric pollution
+  - public unauthenticated credit-card checkout can be abused as a card-testing oracle because gateway outcomes are relayed back to the caller and the route is protected only by a mild per-IP limiter
   - account anonymization frees the original email in `users` but LGPD aggregation still links `subscribers` / `customers` / `orders` by email, so a later account reusing that address can receive prior-user data
   - public product variant media endpoints for `version1` / `version2` / `version3` miss the catalog limiter and can force repeated DB fetch + base64 decode work on large media blobs
+  - public `GET /sitemap.xml` rebuilds its response from heavyweight full-table reads without a limiter, creating an origin-amplification DoS path
 - Re-validated as fixed and not reproposed:
   - `POST /api/auth/login` now enforces a valid CSRF token, so the prior login-CSRF / session-swapping issue was not reproduced
   - `GET /api/auth/csrf-token` now returns a stateless token for anonymous callers without seeding PostgreSQL sessions, so the prior anonymous session-store exhaustion path was not reproduced
@@ -92,6 +93,7 @@
   - globally oversized request-body parsing on public endpoints
   - full API-response logging that copied PII, CSRF tokens, payment data, and LGPD export data into logs
   - prior client-trusted payment totals
+  - unauthenticated PIX checkout creating local orders and admin sale notifications before payment settlement
   - payment-status ownership checks between distinct authenticated users
   - production webhook authentication for Asaas when properly configured
   - HTML escaping in admin/operator notification emails
