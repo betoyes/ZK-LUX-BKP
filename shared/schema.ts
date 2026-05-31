@@ -381,12 +381,12 @@ export const createPixPaymentSchema = z.object({
   postalCode: z.string().regex(/^\d{8}$/, "CEP inválido (informe 8 dígitos numéricos)"),
   description: z.string().optional(),
   cartItems: z.array(z.object({
-    productId: z.number(),
-    quantity: z.number().min(1),
+    productId: z.number().int().positive(),
+    quantity: z.number().int().min(1).max(99, "Quantidade máxima por item é 99"),
     name: z.string(),
     price: z.number().optional(),
     stoneType: z.string().optional(),
-  })).min(1, "Carrinho não pode estar vazio"),
+  })).min(1, "Carrinho não pode estar vazio").max(50, "Carrinho excede o limite de itens"),
 });
 export type CreatePixPayment = z.infer<typeof createPixPaymentSchema>;
 
@@ -408,11 +408,11 @@ export const createCreditCardPaymentSchema = z.object({
   }),
   installmentCount: z.number().min(1).max(12).optional(),
   cartItems: z.array(z.object({
-    productId: z.number(),
-    quantity: z.number().min(1),
+    productId: z.number().int().positive(),
+    quantity: z.number().int().min(1).max(99, "Quantidade máxima por item é 99"),
     name: z.string(),
     price: z.number().optional(),
     stoneType: z.string().optional(),
-  })).min(1, "Carrinho não pode estar vazio"),
+  })).min(1, "Carrinho não pode estar vazio").max(50, "Carrinho excede o limite de itens"),
 });
 export type CreateCreditCardPayment = z.infer<typeof createCreditCardPaymentSchema>;

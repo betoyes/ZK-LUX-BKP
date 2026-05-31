@@ -3006,7 +3006,9 @@ Sitemap: ${baseUrl}/sitemap.xml
   // Create PIX payment
   app.post(
     "/api/payments/pix",
+    requireAuth,
     pixCreationLimiter,
+    paymentLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         if (!asaas.isAsaasConfigured()) {
@@ -3115,7 +3117,7 @@ Sitemap: ${baseUrl}/sitemap.xml
         console.error("Error creating PIX payment:", err);
         res
           .status(400)
-          .json({ message: err.message || "Erro ao criar pagamento PIX" });
+          .json({ message: "Não foi possível processar o pagamento PIX. Verifique os dados e tente novamente." });
       }
     },
   );
@@ -3322,7 +3324,7 @@ Sitemap: ${baseUrl}/sitemap.xml
       } catch (err: any) {
         console.error("Error getting payment status:", err);
         res.status(400).json({
-          message: err.message || "Erro ao consultar status do pagamento",
+          message: "Erro ao consultar status do pagamento. Tente novamente.",
         });
       }
     },
@@ -3404,7 +3406,7 @@ Sitemap: ${baseUrl}/sitemap.xml
         console.error("Error simulating payment:", err);
         res
           .status(400)
-          .json({ message: err.message || "Erro ao simular pagamento" });
+          .json({ message: "Erro ao simular pagamento. Tente novamente." });
       }
     },
   );
