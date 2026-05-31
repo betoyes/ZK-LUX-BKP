@@ -2797,12 +2797,12 @@ Sitemap: ${baseUrl}/sitemap.xml
         console.warn("[Webhook ASAAS] ASAAS_WEBHOOK_TOKEN not configured — processing without auth (dev mode)");
       }
 
-      const { event, payment } = req.body || {};
-      console.log(`[Webhook ASAAS] Event received: ${event}, paymentId: ${payment?.id}, status: ${payment?.status}`);
+      const { id: webhookEventId, event, payment } = req.body || {};
+      console.log(`[Webhook ASAAS] Event received: ${event}, eventId: ${webhookEventId ?? "none"}, paymentId: ${payment?.id}, status: ${payment?.status}`);
 
       const processableEvents = ["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"];
       if (!processableEvents.includes(event)) {
-        return res.status(200).json({ received: true, ignored: true });
+        return res.status(200).json({ received: true });
       }
 
       const asaasPaymentId = payment?.id;
@@ -2817,24 +2817,25 @@ Sitemap: ${baseUrl}/sitemap.xml
         return res.status(200).json({ received: true });
       }
 
-      // Fast path: if the local record already shows a terminal status skip
-      // immediately without hitting the DB again (handles replays cheaply).
+      // Fast path: if the local record already shows a terminal status, skip
+      // without hitting the DB again (handles replays cheaply).
       if (["CONFIRMED", "RECEIVED"].includes(localPayment.status)) {
-        console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} already processed (status: ${localPayment.status}) — skipping`);
-        return res.status(200).json({ received: true, alreadyProcessed: true });
+        console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} already in terminal status — skipping`);
+        return res.status(200).json({ received: true });
       }
 
       const newStatus = event === "PAYMENT_RECEIVED" ? "RECEIVED" : "CONFIRMED";
       const paymentDate = payment.paymentDate || new Date().toISOString().split("T")[0];
+      const eventId: string | null = typeof webhookEventId === "string" && webhookEventId ? webhookEventId : null;
 
       // Atomic status update: only the first concurrent caller succeeds.
-      // If two identical webhook events arrive simultaneously, both read a
-      // non-terminal status above, but only one will win this UPDATE.
-      // The loser receives false and exits without duplicating order/email work.
-      const claimed = await storage.atomicConfirmAsaasPayment(localPayment.id, newStatus, paymentDate);
+      // The WHERE clause guards on both the terminal-status check AND the
+      // webhook event ID so neither concurrent delivery nor exact-event replay
+      // can win the race twice.
+      const claimed = await storage.atomicConfirmAsaasPayment(localPayment.id, newStatus, paymentDate, eventId);
       if (!claimed) {
-        console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} already claimed by concurrent request — skipping`);
-        return res.status(200).json({ received: true, alreadyProcessed: true });
+        console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} already claimed (concurrent or replayed event) — skipping`);
+        return res.status(200).json({ received: true });
       }
       console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} updated to ${newStatus}`);
 
@@ -2905,8 +2906,9 @@ Sitemap: ${baseUrl}/sitemap.xml
 
       return res.status(200).json({ received: true });
     } catch (err) {
-      console.error("[Webhook ASAAS] Internal error processing webhook:", err);
-      return res.status(200).json({ received: true, error: true });
+      const msg = err instanceof Error ? err.message : "unknown error";
+      console.error(`[Webhook ASAAS] Internal error processing webhook: ${msg}`);
+      return res.status(200).json({ received: true });
     }
   });
 
@@ -3232,8 +3234,12 @@ Sitemap: ${baseUrl}/sitemap.xml
           localPayment.asaasPaymentId,
         );
 
-        // Update local status if changed
-        if (asaasPayment.status !== localPayment.status) {
+        // Update local status if changed — but never downgrade a terminal status.
+        // A CONFIRMED or RECEIVED payment cannot become PENDING again via polling;
+        // only the webhook flow (with its atomic guard) may set terminal status.
+        const terminalStatuses = ["CONFIRMED", "RECEIVED"];
+        const alreadyTerminal = terminalStatuses.includes(localPayment.status);
+        if (!alreadyTerminal && asaasPayment.status !== localPayment.status) {
           await storage.updateAsaasPayment(localPayment.id, {
             status: asaasPayment.status,
             paymentDate: asaasPayment.paymentDate,

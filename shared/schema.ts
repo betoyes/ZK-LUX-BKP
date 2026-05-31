@@ -349,6 +349,7 @@ export const asaasPayments = pgTable("asaas_payments", {
   pixQrCodePayload: text("pix_qr_code_payload"),
   creditCardLastDigits: text("credit_card_last_digits"),
   creditCardBrand: text("credit_card_brand"),
+  lastWebhookEventId: text("last_webhook_event_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at"),
 });

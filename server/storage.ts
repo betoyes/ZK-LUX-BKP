@@ -148,7 +148,7 @@ export interface IStorage {
   getAsaasPaymentByAsaasId(asaasPaymentId: string): Promise<AsaasPayment | undefined>;
   createAsaasPayment(payment: InsertAsaasPayment): Promise<AsaasPayment>;
   updateAsaasPayment(id: number, payment: Partial<InsertAsaasPayment>): Promise<AsaasPayment | undefined>;
-  atomicConfirmAsaasPayment(id: number, newStatus: string, paymentDate: string): Promise<boolean>;
+  atomicConfirmAsaasPayment(id: number, newStatus: string, paymentDate: string, webhookEventId: string | null): Promise<boolean>;
   getAsaasPaymentsByCustomerId(asaasCustomerId: number): Promise<AsaasPayment[]>;
 
   // Cart (server-side for authenticated users)
@@ -915,20 +915,37 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  // Atomic status transition: only updates the row if it has not already been
-  // marked CONFIRMED or RECEIVED. Returns true when this caller won the race
-  // (the row was updated), false when another concurrent call already processed
-  // the payment. This prevents duplicate order updates and double emails when
-  // the same webhook event arrives more than once simultaneously.
-  async atomicConfirmAsaasPayment(id: number, newStatus: string, paymentDate: string): Promise<boolean> {
+  // Atomic status transition: only updates the row when BOTH conditions hold:
+  //   1. status is not already terminal (CONFIRMED or RECEIVED) — prevents replay/concurrent
+  //   2. lastWebhookEventId differs from the incoming event ID — prevents exact event replay
+  //      even if the status was somehow downgraded between deliveries (belt-and-suspenders)
+  // Returns true when this caller won the race, false otherwise.
+  async atomicConfirmAsaasPayment(id: number, newStatus: string, paymentDate: string, webhookEventId: string | null): Promise<boolean> {
+    const conditions: ReturnType<typeof eq>[] = [
+      eq(asaasPayments.id, id),
+      sql`${asaasPayments.status} NOT IN ('CONFIRMED', 'RECEIVED')`,
+    ];
+
+    if (webhookEventId) {
+      // Reject the exact same event ID if it was already stored on this row.
+      // Uses IS NULL OR != so that rows with no stored event (first run) always pass.
+      conditions.push(
+        sql`(${asaasPayments.lastWebhookEventId} IS NULL OR ${asaasPayments.lastWebhookEventId} != ${webhookEventId})`
+      );
+    }
+
+    const setValues: Record<string, unknown> = {
+      status: newStatus,
+      paymentDate,
+      updatedAt: new Date().toISOString(),
+    };
+    if (webhookEventId) {
+      setValues.lastWebhookEventId = webhookEventId;
+    }
+
     const result = await db.update(asaasPayments)
-      .set({ status: newStatus, paymentDate, updatedAt: new Date().toISOString() })
-      .where(
-        and(
-          eq(asaasPayments.id, id),
-          sql`${asaasPayments.status} NOT IN ('CONFIRMED', 'RECEIVED')`
-        )
-      )
+      .set(setValues)
+      .where(and(...conditions))
       .returning({ id: asaasPayments.id });
     return result.length > 0;
   }
