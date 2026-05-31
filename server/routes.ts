@@ -124,11 +124,23 @@ const publicCatalogLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// In-process sitemap cache — avoids 4 full-table reads on every request.
-// The sitemap changes only when products/categories/collections/posts change,
+// In-process sitemap cache — avoids full-table reads on every request.
+// The sitemap changes only when products/collections/posts change,
 // so a 10-minute TTL is a safe trade-off between freshness and DB load.
 let sitemapCache: { xml: string; expiresAt: number } | null = null;
 const SITEMAP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Stricter limiter for the sitemap endpoint — it triggers full-table reads so
+// should not be fetched at high frequency by bots or scrapers.
+const sitemapLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === 'development' ? 60 : 10,
+  message: {
+    message: "Muitas requisições. Tente novamente em instantes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Limiter for the CSRF-token endpoint — prevents token-harvesting loops.
 const csrfTokenLimiter = rateLimit({
@@ -2653,7 +2665,7 @@ Sitemap: ${baseUrl}/sitemap.xml
 `);
   });
 
-  app.get("/sitemap.xml", publicCatalogLimiter, async (req, res, next) => {
+  app.get("/sitemap.xml", sitemapLimiter, async (req, res, next) => {
     try {
       // Serve from cache if still valid — avoids full-table reads on every hit
       const now = Date.now();
@@ -2664,10 +2676,10 @@ Sitemap: ${baseUrl}/sitemap.xml
       }
 
       const baseUrl = getTrustedBaseUrl(req);
-      const products = await storage.getProducts();
-      const categories = await storage.getCategories();
-      const collections = await storage.getCollections();
-      const journalPosts = await storage.getJournalPosts();
+      const [productIds, journalPostIds] = await Promise.all([
+        storage.getProductIds(),
+        storage.getJournalPostIds(),
+      ]);
 
       const staticPages = [
         { url: "/", priority: "1.0", changefreq: "daily" },
@@ -2697,18 +2709,18 @@ Sitemap: ${baseUrl}/sitemap.xml
 `;
       }
 
-      for (const product of products) {
+      for (const id of productIds) {
         xml += `  <url>
-    <loc>${baseUrl}/product/${product.id}</loc>
+    <loc>${baseUrl}/product/${id}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 `;
       }
 
-      for (const post of journalPosts) {
+      for (const id of journalPostIds) {
         xml += `  <url>
-    <loc>${baseUrl}/journal/${post.id}</loc>
+    <loc>${baseUrl}/journal/${id}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

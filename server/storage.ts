@@ -48,6 +48,7 @@ export interface IStorage {
 
   // Products
   getProducts(): Promise<Product[]>;
+  getProductIds(): Promise<number[]>;
   getProductById(id: number): Promise<Product | undefined>;
   getProductsByCategory(categoryId: number): Promise<Product[]>;
   getProductsByCollection(collectionId: number): Promise<Product[]>;
@@ -60,6 +61,7 @@ export interface IStorage {
 
   // Journal Posts
   getJournalPosts(): Promise<JournalPost[]>;
+  getJournalPostIds(): Promise<number[]>;
   getJournalPostById(id: number): Promise<JournalPost | undefined>;
   createJournalPost(post: InsertJournalPost): Promise<JournalPost>;
   updateJournalPost(id: number, post: Partial<InsertJournalPost>): Promise<JournalPost | undefined>;
@@ -250,6 +252,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(products);
   }
 
+  async getProductIds(): Promise<number[]> {
+    const rows = await db.select({ id: products.id }).from(products);
+    return rows.map((r) => r.id);
+  }
+
   async getProductsLightweight(): Promise<any[]> {
     const rows = await db.select({
       id: products.id,
@@ -345,6 +352,11 @@ export class DatabaseStorage implements IStorage {
   // Journal Posts
   async getJournalPosts(): Promise<JournalPost[]> {
     return await db.select().from(journalPosts).orderBy(desc(journalPosts.id));
+  }
+
+  async getJournalPostIds(): Promise<number[]> {
+    const rows = await db.select({ id: journalPosts.id }).from(journalPosts);
+    return rows.map((r) => r.id);
   }
 
   async getJournalPostById(id: number): Promise<JournalPost | undefined> {
