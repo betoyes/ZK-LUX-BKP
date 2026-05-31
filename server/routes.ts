@@ -882,6 +882,68 @@ export async function registerRoutes(
     },
   );
 
+  // Cart (server-side sync for authenticated users)
+  app.get(
+    "/api/cart",
+    requireAuth,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const userId = (req as any).user?.id as number;
+        const items = await storage.getCartByUserId(userId);
+        res.json(items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          stoneType: item.stoneType ?? undefined,
+        })));
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  app.put(
+    "/api/cart",
+    csrfProtection,
+    requireAuth,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const userId = (req as any).user?.id as number;
+        const itemsSchema = z.array(z.object({
+          productId: z.number().int().positive(),
+          quantity: z.number().int().positive(),
+          stoneType: z.string().optional(),
+        }));
+        const parsed = itemsSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ message: "Dados do carrinho inválidos" });
+        }
+        const saved = await storage.replaceCart(userId, parsed.data);
+        res.json(saved.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          stoneType: item.stoneType ?? undefined,
+        })));
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  app.delete(
+    "/api/cart",
+    csrfProtection,
+    requireAuth,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const userId = (req as any).user?.id as number;
+        await storage.clearCartByUserId(userId);
+        res.json({ message: "Carrinho limpo" });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   // Change password (logged in user)
   app.post(
     "/api/auth/change-password",

@@ -1,7 +1,7 @@
 import {
   users, categories, collections, products, journalPosts, subscribers,
   customers, orders, branding, emailVerificationTokens, passwordResetTokens, auditLogs, dataExportRequests,
-  asaasCustomers, asaasPayments,
+  asaasCustomers, asaasPayments, cartItems,
   type User, type InsertUser, type UpdateUserProfile,
   type Category, type InsertCategory,
   type Collection, type InsertCollection,
@@ -17,6 +17,7 @@ import {
   type DataExportRequest, type AuditLog,
   type AsaasCustomer, type InsertAsaasCustomer,
   type AsaasPayment, type InsertAsaasPayment,
+  type CartItemRow,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, isNotNull, isNull, asc, and, gt, gte, sql } from "drizzle-orm";
@@ -145,6 +146,11 @@ export interface IStorage {
   createAsaasPayment(payment: InsertAsaasPayment): Promise<AsaasPayment>;
   updateAsaasPayment(id: number, payment: Partial<InsertAsaasPayment>): Promise<AsaasPayment | undefined>;
   getAsaasPaymentsByCustomerId(asaasCustomerId: number): Promise<AsaasPayment[]>;
+
+  // Cart (server-side for authenticated users)
+  getCartByUserId(userId: number): Promise<CartItemRow[]>;
+  replaceCart(userId: number, items: { productId: number; quantity: number; stoneType?: string }[]): Promise<CartItemRow[]>;
+  clearCartByUserId(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -796,6 +802,33 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(asaasPayments)
       .where(eq(asaasPayments.asaasCustomerId, asaasCustomerId))
       .orderBy(desc(asaasPayments.createdAt));
+  }
+
+  // Cart (server-side for authenticated users)
+  async getCartByUserId(userId: number): Promise<CartItemRow[]> {
+    return await db.select().from(cartItems).where(eq(cartItems.userId, userId));
+  }
+
+  async replaceCart(userId: number, items: { productId: number; quantity: number; stoneType?: string }[]): Promise<CartItemRow[]> {
+    return await db.transaction(async (tx) => {
+      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+      if (items.length === 0) return [];
+      const now = new Date().toISOString();
+      const inserted = await tx.insert(cartItems).values(
+        items.map(item => ({
+          userId,
+          productId: item.productId,
+          quantity: item.quantity,
+          stoneType: item.stoneType ?? null,
+          updatedAt: now,
+        }))
+      ).returning();
+      return inserted;
+    });
+  }
+
+  async clearCartByUserId(userId: number): Promise<void> {
+    await db.delete(cartItems).where(eq(cartItems.userId, userId));
   }
 }
 

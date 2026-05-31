@@ -357,6 +357,20 @@ export const insertAsaasPaymentSchema = createInsertSchema(asaasPayments).omit({
 export type InsertAsaasPayment = z.infer<typeof insertAsaasPaymentSchema>;
 export type AsaasPayment = typeof asaasPayments.$inferSelect;
 
+// Cart items table (server-side cart for authenticated users)
+export const cartItems = pgTable("cart_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  productId: integer("product_id").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  stoneType: text("stone_type"),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type CartItemRow = typeof cartItems.$inferSelect;
+
 // Payment request validation schemas
 export const createPixPaymentSchema = z.object({
   email: z.string().email("Email inválido"),

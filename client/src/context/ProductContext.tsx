@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef, useCallback } from 'react';
 import { Product, products as initialProducts, Category, categories as initialCategories, Collection, collections as initialCollections, Branding, initialBranding, JournalPost, initialPosts } from '@/lib/mockData';
 import ringImage from '@assets/generated_images/diamond_ring_product_shot.webp';
 import { getCsrfToken } from '@/lib/csrf';
+import { useAuth } from '@/context/AuthContext';
 
 export interface CartItem {
   productId: number;
@@ -50,7 +51,59 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+function readLocalCart(): CartItem[] {
+  try {
+    const savedCart = localStorage.getItem('zkrezk_cart');
+    if (savedCart) return JSON.parse(savedCart);
+  } catch {}
+  return [];
+}
+
+function writeLocalCart(cart: CartItem[]) {
+  try {
+    localStorage.setItem('zkrezk_cart', JSON.stringify(cart));
+  } catch {}
+}
+
+function clearLocalCart() {
+  try {
+    localStorage.removeItem('zkrezk_cart');
+  } catch {}
+}
+
+function mergeCartItems(local: CartItem[], remote: CartItem[]): CartItem[] {
+  const merged = [...remote];
+  for (const localItem of local) {
+    const existing = merged.find(
+      r => r.productId === localItem.productId && r.stoneType === localItem.stoneType
+    );
+    if (existing) {
+      existing.quantity = Math.max(existing.quantity, localItem.quantity);
+    } else {
+      merged.push(localItem);
+    }
+  }
+  return merged;
+}
+
+async function pushCartToServer(items: CartItem[]): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const csrfToken = getCsrfToken();
+  if (csrfToken) headers['x-csrf-token'] = csrfToken;
+  const res = await fetch('/api/cart', {
+    method: 'PUT',
+    headers,
+    credentials: 'include',
+    body: JSON.stringify(items),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Cart sync failed (${res.status}): ${text}`);
+  }
+}
+
 export function ProductProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [collections, setCollections] = useState<Collection[]>(initialCollections);
@@ -59,30 +112,92 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<JournalPost[]>(initialPosts);
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [branding, setBranding] = useState<Branding>(initialBranding);
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    // Initialize cart from localStorage
-    try {
-      const savedCart = localStorage.getItem('zkrezk_cart');
-      if (savedCart) {
-        return JSON.parse(savedCart);
-      }
-    } catch (err) {
-      console.error('Failed to load cart from localStorage:', err);
-    }
-    return [];
-  });
+  const [cart, setCart] = useState<CartItem[]>(readLocalCart);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Persist cart to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('zkrezk_cart', JSON.stringify(cart));
-    } catch (err) {
-      console.error('Failed to save cart to localStorage:', err);
-    }
-  }, [cart]);
+  // Epoch counter: incremented on every login transition.
+  // A pending sync timeout captures the epoch at scheduling time and checks it before firing.
+  // If the epoch advanced (a new login/hydration started), the stale sync is cancelled.
+  const syncEpochRef = useRef(0);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevUserIdRef = useRef<number | null>(null);
 
-  // Load data from server on mount
+  // Debounced cart→server sync. Only fires if the captured epoch still matches current epoch.
+  const scheduleSyncToServer = useCallback((items: CartItem[]) => {
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    const capturedEpoch = syncEpochRef.current;
+    syncTimeoutRef.current = setTimeout(async () => {
+      if (syncEpochRef.current !== capturedEpoch) {
+        // Hydration happened between schedule and fire — abort to avoid overwriting merged cart.
+        return;
+      }
+      try {
+        await pushCartToServer(items);
+      } catch (err) {
+        console.error('Failed to sync cart to server:', err);
+      }
+    }, 500);
+  }, []);
+
+  // Persist cart to localStorage on every change.
+  // For authenticated users, also schedule a debounced sync to server — but only when
+  // the epoch is stable (i.e., not mid-hydration). The epoch check inside the timeout
+  // guards against pre-hydration stale data reaching the server.
+  useEffect(() => {
+    writeLocalCart(cart);
+    if (user) {
+      scheduleSyncToServer(cart);
+    }
+  }, [cart, user, scheduleSyncToServer]);
+
+  // Handle login / logout transitions.
+  useEffect(() => {
+    if (authLoading) return;
+
+    const currentUserId = user?.id ?? null;
+
+    if (currentUserId !== null && currentUserId !== prevUserIdRef.current) {
+      // --- LOGIN TRANSITION ---
+      // Increment epoch immediately so any sync timeout that was just scheduled
+      // (by the cart-persist effect above) will see a stale epoch and abort.
+      syncEpochRef.current += 1;
+
+      (async () => {
+        try {
+          const res = await fetch('/api/cart', { credentials: 'include' });
+          if (!res.ok) {
+            console.error('Failed to load server cart:', res.status);
+            return;
+          }
+          const serverItems: CartItem[] = await res.json();
+          // Read current local cart at merge time (may differ from stale closure value)
+          const localItems = readLocalCart();
+          const merged = mergeCartItems(localItems, serverItems);
+          writeLocalCart(merged);
+          setCart(merged);
+          // Push the merged cart to server. getCsrfToken() is called here, well after
+          // AuthContext.login() has completed fetchCsrfToken(), so the token is fresh.
+          await pushCartToServer(merged);
+        } catch (err) {
+          console.error('Failed to hydrate cart on login:', err);
+        }
+        // Epoch is NOT re-incremented here. The setCart(merged) above triggers the
+        // cart-persist effect which schedules a sync with the current epoch. That
+        // sync will also carry the merged cart (same data), so it is harmless.
+      })();
+
+    } else if (currentUserId === null && prevUserIdRef.current !== null) {
+      // --- LOGOUT TRANSITION ---
+      syncEpochRef.current += 1; // cancel any pending sync
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      clearLocalCart();
+      setCart([]);
+    }
+
+    prevUserIdRef.current = currentUserId;
+  }, [user, authLoading]);
+
+  // Load catalogue data from server on mount
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -133,7 +248,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Products - now persisted to backend
+  // Products
   const addProduct = async (newProduct: Omit<Product, 'id'>) => {
     try {
       const response = await fetch('/api/products', {
@@ -164,13 +279,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const updated = await response.json();
         setProducts(prev => {
-          // Check if product exists in local state
           const exists = prev.some(p => p.id === id);
           if (exists) {
-            // Update existing product
             return prev.map(p => (p.id === id ? updated : p));
           } else {
-            // Product was cloned or created externally - add to list
             return [...prev, updated];
           }
         });
@@ -225,7 +337,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Categories - now persisted to backend
+  // Categories
   const addCategory = async (newCategory: Omit<Category, 'id'>) => {
     try {
       const slug = newCategory.name.toLowerCase().replace(/\s+/g, '-');
@@ -262,7 +374,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Collections - now persisted to backend
+  // Collections
   const addCollection = async (newCollection: Omit<Collection, 'id'>) => {
     try {
       const slug = newCollection.name.toLowerCase().replace(/\s+/g, '-');
@@ -322,7 +434,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Posts - now persisted to backend
+  // Posts
   const addPost = async (newPost: Omit<JournalPost, 'id' | 'date'>) => {
     try {
       const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
