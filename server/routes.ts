@@ -111,6 +111,30 @@ const subscriberLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Permissive limiter for public read-only catalog endpoints.
+// High enough to never bother a real user or browser, low enough to
+// slow down automated scrapers and abuse bots.
+const publicCatalogLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === 'development' ? 300 : 120,
+  message: {
+    message: "Muitas requisições. Tente novamente em instantes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Limiter for the CSRF-token endpoint — prevents token-harvesting loops.
+const csrfTokenLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === 'development' ? 100 : 30,
+  message: {
+    message: "Muitas requisições. Tente novamente em instantes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Helper to get client IP
 function getClientIp(req: Request): string | null {
   return (
@@ -325,7 +349,7 @@ export async function registerRoutes(
   // ============ AUTH ROUTES ============
 
   // CSRF Token endpoint
-  app.get("/api/auth/csrf-token", (req: any, res: Response) => {
+  app.get("/api/auth/csrf-token", csrfTokenLimiter, (req: any, res: Response) => {
     if (!req.session?.csrfToken) {
       req.session.csrfToken = crypto.randomBytes(32).toString("hex");
     }
@@ -1223,7 +1247,7 @@ export async function registerRoutes(
 
   // ============ CATEGORIES ROUTES ============
 
-  app.get("/api/categories", async (req, res, next) => {
+  app.get("/api/categories", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1236,7 +1260,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/categories/:slug", async (req, res, next) => {
+  app.get("/api/categories/:slug", publicCatalogLimiter, async (req, res, next) => {
     try {
       const category = await storage.getCategoryBySlug(req.params.slug);
       if (!category) {
@@ -1292,7 +1316,7 @@ export async function registerRoutes(
 
   // ============ COLLECTIONS ROUTES ============
 
-  app.get("/api/collections", async (req, res, next) => {
+  app.get("/api/collections", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1305,7 +1329,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/collections/:slug", async (req, res, next) => {
+  app.get("/api/collections/:slug", publicCatalogLimiter, async (req, res, next) => {
     try {
       const collection = await storage.getCollectionBySlug(req.params.slug);
       if (!collection) {
@@ -1398,7 +1422,7 @@ export async function registerRoutes(
     };
   };
 
-  app.get("/api/products", async (req, res, next) => {
+  app.get("/api/products", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1454,7 +1478,7 @@ export async function registerRoutes(
   });
 
   // Serve product images separately
-  app.get("/api/products/:id/image", async (req, res, next) => {
+  app.get("/api/products/:id/image", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1493,7 +1517,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/products/:id/image-color", async (req, res, next) => {
+  app.get("/api/products/:id/image-color", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1577,7 +1601,7 @@ export async function registerRoutes(
   );
 
   // DEPOIS — strip base64, retorna URLs de imagem
-  app.get("/api/products/:id", async (req, res, next) => {
+  app.get("/api/products/:id", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1710,7 +1734,7 @@ export async function registerRoutes(
 
   // ============ JOURNAL POSTS ROUTES ============
 
-  app.get("/api/journal", async (req, res, next) => {
+  app.get("/api/journal", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -1723,7 +1747,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/journal/:id", async (req, res, next) => {
+  app.get("/api/journal/:id", publicCatalogLimiter, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const post = await storage.getJournalPostById(id);
@@ -2028,7 +2052,7 @@ export async function registerRoutes(
 
   // ============ CONFIG ROUTES ============
 
-  app.get("/api/config/whatsapp", (req, res) => {
+  app.get("/api/config/whatsapp", publicCatalogLimiter, (req, res) => {
     res.set("Cache-Control", "public, max-age=3600");
     res.json({
       number: process.env.WHATSAPP_NUMBER || "5511999999999",
@@ -2040,7 +2064,7 @@ export async function registerRoutes(
 
   // ============ BRANDING ROUTES ============
 
-  app.get("/api/branding", async (req, res, next) => {
+  app.get("/api/branding", publicCatalogLimiter, async (req, res, next) => {
     try {
       res.set(
         "Cache-Control",
@@ -2760,7 +2784,7 @@ Sitemap: ${baseUrl}/sitemap.xml
   });
 
   // Check if Asaas is configured
-  app.get("/api/payments/config", async (req, res) => {
+  app.get("/api/payments/config", publicCatalogLimiter, async (req, res) => {
     res.json({
       configured: asaas.isAsaasConfigured(),
       sandbox: asaas.isSandboxMode(),
