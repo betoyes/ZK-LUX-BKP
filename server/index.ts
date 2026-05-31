@@ -121,6 +121,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  log(`Server booting — build loaded at ${new Date().toISOString()}`, "boot");
   await registerRoutes(httpServer, app);
 
   // LGPD soft-delete cleanup: anonymize accounts whose 30-day retention window

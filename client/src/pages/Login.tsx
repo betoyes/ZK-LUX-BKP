@@ -42,6 +42,8 @@ export default function Login() {
   const mode = new URLSearchParams(searchParams).get('mode');
   const [isLogin, setIsLogin] = useState(mode !== 'register');
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, isAuthenticated, isAdmin } = useAuth();
@@ -102,11 +104,9 @@ export default function Login() {
           throw new Error(error.message || 'Erro ao criar conta');
         }
         
-        const data = await response.json();
-        toast({
-          title: "Conta criada com sucesso!",
-          description: data.message || "Verifique seu email para ativar sua conta.",
-        });
+        await response.json();
+        setRegisteredEmail(values.email);
+        setRegistrationSuccess(true);
         setIsLogin(true);
         form.reset({ email: values.email, password: "", confirmPassword: "", consentTerms: false, consentPrivacy: false, consentMarketing: false });
       }
@@ -123,6 +123,7 @@ export default function Login() {
 
   const handleModeSwitch = () => {
     setIsLogin(!isLogin);
+    setRegistrationSuccess(false);
     form.reset({ email: "", password: "", confirmPassword: "" });
   };
 
@@ -151,6 +152,14 @@ export default function Login() {
       <div className="w-full md:w-1/2 p-8 md:p-24 flex flex-col justify-center bg-background">
         <div className="max-w-sm mx-auto w-full space-y-12">
           <>
+            {registrationSuccess && (
+              <div className="border border-green-300 bg-green-50 p-4 text-sm" data-testid="registration-success-banner">
+                <p className="font-mono text-xs uppercase tracking-widest text-green-800 mb-1">Conta criada com sucesso!</p>
+                <p className="text-green-700">
+                  Você já pode fazer login. Um email de confirmação foi enviado para <strong>{registeredEmail}</strong> — verifique sua caixa de entrada para ativar sua conta.
+                </p>
+              </div>
+            )}
             <div>
                 <h1 className="font-display text-4xl mb-2">{isLogin ? 'Entrar' : 'Criar Conta'}</h1>
                 <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest">

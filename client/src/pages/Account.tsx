@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Package, Heart, LogOut, User, Shield, Loader2, Save, CheckCircle2 } from 'lucide-react';
+import { Package, Heart, LogOut, User, Shield, Loader2, Save, CheckCircle2, MailWarning } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
@@ -47,6 +47,26 @@ export default function Account() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  const handleResendVerification = async () => {
+    if (!user?.username || resendingVerification) return;
+    setResendingVerification(true);
+    try {
+      await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.username }),
+        credentials: 'include',
+      });
+      toast({ title: "Email enviado", description: "Verifique sua caixa de entrada para confirmar seu email." });
+    } catch {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível reenviar o email." });
+    } finally {
+      setResendingVerification(false);
+    }
+  };
 
   const [profileForm, setProfileForm] = useState({
     fullName: '',
@@ -173,6 +193,24 @@ export default function Account() {
             <LogOut className="h-3 w-3" /> Sair
           </Button>
         </div>
+
+        {user && !user.emailVerified && (
+          <div className="mb-8 border border-amber-300 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3" data-testid="email-verification-banner">
+            <MailWarning className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="flex-1">
+              <p className="font-mono text-xs uppercase tracking-widest text-amber-800 mb-1">Email não confirmado</p>
+              <p className="text-sm text-amber-700">Verifique sua caixa de entrada e clique no link de confirmação para ativar sua conta.</p>
+            </div>
+            <button
+              onClick={handleResendVerification}
+              disabled={resendingVerification}
+              className="font-mono text-xs uppercase tracking-widest text-amber-800 border border-amber-400 px-3 py-2 hover:bg-amber-100 transition-colors whitespace-nowrap disabled:opacity-50"
+              data-testid="button-resend-verification"
+            >
+              {resendingVerification ? 'Enviando...' : 'Reenviar email'}
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
           <div className="lg:col-span-1">

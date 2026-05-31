@@ -41,7 +41,7 @@ import { calculateShippingFromCep, calculateInstallmentWithInterest } from "./pr
 // Rate limiters for authentication routes
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: process.env.NODE_ENV === 'development' ? 50 : 10,
   message: {
     message: "Muitas tentativas de login. Tente novamente em 15 minutos.",
   },
@@ -51,7 +51,7 @@ const loginLimiter = rateLimit({
 
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: process.env.NODE_ENV === 'development' ? 50 : 3,
+  max: process.env.NODE_ENV === 'development' ? 50 : 10,
   message: {
     message: "Muitas tentativas de cadastro. Tente novamente em 1 hora.",
   },
@@ -237,6 +237,7 @@ declare global {
       id: number;
       username: string;
       role: string;
+      emailVerified?: boolean;
     }
   }
 }
@@ -366,25 +367,41 @@ export async function registerRoutes(
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = await storage.getUserByUsername(username);
+        // Try username field first; fall back to email field so users whose
+        // account was created with a different username (e.g. via admin panel)
+        // can still log in with their email address.
+        const rawUser =
+          (await storage.getUserByUsername(username)) ||
+          (await storage.getUserByEmail(username));
+
+        // Treat soft-deleted and anonymized accounts as non-existent.
+        const user = rawUser && !rawUser.deletedAt && !rawUser.anonymizedAt
+          ? rawUser
+          : null;
+
         if (!user) {
-          // Perform a dummy compare so this branch takes the same wall-clock
-          // time as a valid-user/wrong-password branch (timing-attack mitigation).
+          console.log(`[Auth] login attempt: no user found for "${username}"`);
+          // Dummy compare keeps this branch as slow as the wrong-password branch
+          // to prevent timing-based enumeration.
           await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
           return done(null, false, { message: "Credenciais inválidas" });
         }
 
         const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) {
+          console.log(`[Auth] login attempt: wrong password for user id=${user.id} username="${user.username}"`);
           return done(null, false, { message: "Credenciais inválidas" });
         }
 
+        console.log(`[Auth] login success: user id=${user.id} username="${user.username}"`);
         return done(null, {
           id: user.id,
           username: user.username,
           role: user.role,
+          emailVerified: !!user.emailVerified,
         });
       } catch (err) {
+        console.error(`[Auth] login error for "${username}":`, err);
         return done(err);
       }
     }),
@@ -400,7 +417,7 @@ export async function registerRoutes(
       if (!user || user.deletedAt || user.anonymizedAt) {
         return done(null, false);
       }
-      done(null, { id: user.id, username: user.username, role: user.role });
+      done(null, { id: user.id, username: user.username, role: user.role, emailVerified: !!user.emailVerified });
     } catch (err) {
       done(err);
     }
@@ -934,25 +951,6 @@ export async function registerRoutes(
               .json({ message: info?.message || "Credenciais inválidas" });
           }
 
-          // Check email verification (admins are exempt)
-          if (user.role !== "admin") {
-            const fullUser = await storage.getUser(user.id);
-            if (fullUser && !fullUser.emailVerified) {
-              await logAuditEvent(
-                user.id,
-                "login_failed",
-                clientIp,
-                userAgent,
-                { reason: "email_not_verified" },
-              );
-              // Generic message — do not reveal that credentials were correct
-              // or that the account exists but is unverified (enumeration signal).
-              return res.status(401).json({
-                message: "Credenciais inválidas",
-              });
-            }
-          }
-
           req.session.regenerate((regenErr) => {
             if (regenErr) {
               return next(regenErr);
@@ -973,6 +971,7 @@ export async function registerRoutes(
                 id: user.id,
                 username: user.username,
                 role: user.role,
+                emailVerified: user.emailVerified ?? false,
               });
             });
           });
@@ -1179,6 +1178,7 @@ export async function registerRoutes(
         id: req.user!.id,
         username: req.user!.username,
         role: req.user!.role,
+        emailVerified: req.user!.emailVerified ?? false,
       });
     } else {
       res.status(401).json({ message: "Não autenticado" });
