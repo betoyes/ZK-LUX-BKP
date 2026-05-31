@@ -904,21 +904,28 @@ export default function Dashboard() {
     document.body.removeChild(link);
   };
 
-  const handleDownloadCustomers = () => {
-    const csvContent = [
-      "ID,Nome,Email,Pedidos,Total Gasto,Ultima Compra",
-      ...customers.map(c => `${c.id},"${c.name}",${c.email},${c.orders},${c.totalSpent},${c.lastOrder}`)
-    ].join('\n');
-    downloadCSV(csvContent, 'clientes.csv');
+  const handleDownloadCustomers = async () => {
+    try {
+      const response = await fetch('/api/customers/export');
+      if (!response.ok) return;
+      const blob = await response.blob();
+      downloadCSV(await blob.text(), 'clientes.csv');
+    } catch {
+      // silently ignore download errors
+    }
   };
 
-  const handleDownloadSubscribers = () => {
-    const csvContent = [
-      "ID,Nome,Email,Tipo,Data,Status",
-      ...filteredSubscribers.map(s => `${s.id},"${s.name || ''}",${s.email},${s.type || 'newsletter'},${s.date},${s.status}`)
-    ].join('\n');
-    const filename = subscriberFilter === 'all' ? 'todos_assinantes.csv' : `${subscriberFilter}.csv`;
-    downloadCSV(csvContent, filename);
+  const handleDownloadSubscribers = async () => {
+    try {
+      const typeParam = subscriberFilter !== 'all' ? `?type=${subscriberFilter}` : '';
+      const response = await fetch(`/api/subscribers/export${typeParam}`);
+      if (!response.ok) return;
+      const blob = await response.blob();
+      const filename = subscriberFilter === 'all' ? 'todos_assinantes.csv' : `${subscriberFilter}.csv`;
+      downloadCSV(await blob.text(), filename);
+    } catch {
+      // silently ignore download errors
+    }
   };
 
   const handleAddSubscriber = async () => {

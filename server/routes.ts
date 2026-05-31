@@ -1892,6 +1892,40 @@ export async function registerRoutes(
 
   // ============ SUBSCRIBERS ROUTES ============
 
+  // CSV injection prevention: neutralise formula-triggering prefixes (=, +, -, @, \t, \r)
+  // by prepending a single-quote so spreadsheet apps treat the value as plain text.
+  // Double-quotes inside the value are escaped per RFC 4180 (doubled).
+  function sanitizeCsvField(value: string | number | null | undefined): string {
+    if (value == null) return '';
+    const str = String(value);
+    return /^[=+\-@\t\r]/.test(str) ? `'${str.replace(/"/g, '""')}` : str.replace(/"/g, '""');
+  }
+
+  function csvRow(fields: (string | number | null | undefined)[]): string {
+    return fields.map(f => `"${sanitizeCsvField(f)}"`).join(',');
+  }
+
+  // Export subscribers as sanitized CSV (admin only)
+  app.get("/api/subscribers/export", requireAdmin, async (req, res, next) => {
+    try {
+      const { type } = req.query;
+      const list = (type && typeof type === 'string')
+        ? await storage.getSubscribersByType(type)
+        : await storage.getSubscribers();
+
+      const header = 'ID,Nome,Email,Tipo,Data,Status';
+      const rows = list.map(s => csvRow([s.id, s.name || '', s.email, s.type || 'newsletter', s.date, s.status]));
+      const csv = [header, ...rows].join('\r\n');
+      const filename = (type && typeof type === 'string') ? `${type}.csv` : 'todos_assinantes.csv';
+
+      res.set('Content-Type', 'text/csv; charset=utf-8');
+      res.set('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(csv);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.get("/api/subscribers", requireAdmin, async (req, res, next) => {
     try {
       const { type } = req.query;
@@ -2016,6 +2050,22 @@ export async function registerRoutes(
     try {
       const customers = await storage.getCustomers();
       res.json(customers);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Export customers as sanitized CSV (admin only)
+  app.get("/api/customers/export", requireAdmin, async (req, res, next) => {
+    try {
+      const list = await storage.getCustomers();
+      const header = 'ID,Nome,Email,Pedidos,Total Gasto,Ultima Compra';
+      const rows = list.map(c => csvRow([c.id, c.name, c.email, c.orders ?? 0, c.totalSpent ?? 0, c.lastOrder ?? '']));
+      const csv = [header, ...rows].join('\r\n');
+
+      res.set('Content-Type', 'text/csv; charset=utf-8');
+      res.set('Content-Disposition', 'attachment; filename="clientes.csv"');
+      res.send(csv);
     } catch (err) {
       next(err);
     }

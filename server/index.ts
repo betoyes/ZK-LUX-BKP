@@ -89,17 +89,16 @@ const largeJsonParser = express.json({
 const smallUrlencodedParser = express.urlencoded({ extended: false, limit: '100kb' });
 const largeUrlencodedParser = express.urlencoded({ extended: false, limit: '10mb' });
 
-// Reject unauthenticated callers that send oversized bodies to admin-only product
-// routes BEFORE any body parser runs — evaluating Content-Length is a zero-cost
-// header check that avoids buffering megabytes for requests that will be rejected
-// by requireAdmin anyway. A missing session cookie is a reliable indicator of an
-// unauthenticated caller; legitimate admins always have a session cookie.
+// Reject unauthenticated callers on admin-only product routes BEFORE any body
+// parser runs. All routes matched by LARGE_BODY_PATHS require admin auth, so a
+// missing session cookie is definitive proof of an unauthenticated caller.
+// Blocking here avoids buffering up to 10 MB before requireAdmin can enforce
+// auth, and covers both explicit Content-Length spoofing and chunked transfer
+// encoding (which has no Content-Length header to inspect).
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!(LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method))) {
     return next();
   }
-  const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-  if (contentLength <= 100 * 1024) return next();
   if (!req.headers.cookie) {
     return res.status(401).json({ message: "Não autenticado" });
   }
