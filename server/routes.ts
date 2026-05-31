@@ -872,16 +872,18 @@ export async function registerRoutes(
       const userAgent = getUserAgent(req);
       const userId = (req as any).user?.id;
 
-      req.logout(async () => {
-        // Log logout event
+      req.logout(async (logoutErr) => {
+        // Log logout event before destroying session
         if (userId) {
           await logAuditEvent(userId, "logout", clientIp, userAgent);
         }
 
-        // Destroy the session entirely so allowedPaymentIds and other
-        // session-scoped data cannot be read by the next user on this browser.
+        // Destroy the session entirely so stale allowedPaymentIds (and any
+        // other session-scoped authorization data) cannot be inherited by the
+        // next browser user or a subsequent login on the same device.
         req.session.destroy((destroyErr) => {
           if (destroyErr) {
+            // Non-fatal: log but still return success so the client clears its state
             console.error("[Auth] Failed to destroy session on logout:", destroyErr);
           }
           res.clearCookie("connect.sid");
