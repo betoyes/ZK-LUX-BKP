@@ -73,12 +73,12 @@
 - `client/src/pages/Checkout.tsx`: client/payment interaction points to confirm server-side validation
 
 ## Current scan notes
-- Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
+- Deterministic scans again produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - public auth and recovery endpoints still leak account state through response timing because real-account branches await password hashing, token writes, and outbound Resend email delivery before responding
-  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves personal data behind in retained `audit_logs` rows even after the export-blob retention path was narrowed
-  - public subscriber data is exported by the admin dashboard into CSV without formula neutralization, so attacker-controlled subscriber fields can execute spreadsheet formulas when operators open the export
-  - `server/index.ts` still allows unauthenticated callers to reach the 10 MB admin-product body parser before `requireAdmin` by sending a dummy `Cookie` header or omitting `Content-Length` on chunked requests
+  - public auth and recovery endpoints still leak account state through response timing because real-account branches await extra database work and outbound Resend delivery before responding
+  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves personal data behind in retained `audit_logs` rows and even writes a fresh pre-anonymization email into the `account_anonymize` audit event
+  - unauthenticated callers can bypass the intended checkout auth gate by visiting `/checkout` directly or calling `POST /api/payments/pix`, which creates real PIX payments and allows webhook-confirmed orders with `userId = null`
+  - `server/index.ts` still allows unauthenticated callers to reach the 10 MB admin-product body parser before `requireAdmin` by forging the `connect.sid` cookie name, even though the earlier broader header/content-length variant was narrowed
 - Re-validated as fixed and not reproposed:
   - `POST /api/auth/login` now returns the same generic 401 response for unverified and invalid-credential cases, so the prior unverified-account response oracle was not reproduced
   - `POST /api/subscribers` now returns the same success response for new and existing emails, so the prior subscriber-presence oracle was not reproduced
@@ -102,6 +102,7 @@
   - production webhook authentication for Asaas when properly configured
   - replayed or concurrent Asaas webhooks creating duplicate paid orders, now that `storage.atomicConfirmAsaasPayment()` claims the transition before order creation
   - payment-status polling suppressing webhook-driven order creation, because `GET /api/payments/:paymentId/status` now refuses to persist terminal gateway states and leaves webhook confirmation/order creation authoritative
+  - public subscriber/customer CSV export now neutralizes formula-triggering content server-side before download, so the prior spreadsheet-formula injection path was not reproduced
   - product variant media DoS on `version1` / `version2` / `version3`
   - sitemap rebuild DoS on `GET /sitemap.xml`
   - HTML escaping in admin/operator notification emails
