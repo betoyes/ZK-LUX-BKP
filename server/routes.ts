@@ -278,14 +278,6 @@ export async function registerRoutes(
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // CSRF token generation - generate on session creation
-  app.use((req: any, res: Response, next: NextFunction) => {
-    if (req.session && !req.session.csrfToken) {
-      req.session.csrfToken = crypto.randomBytes(32).toString("hex");
-    }
-    next();
-  });
-
   // CSRF validation middleware for auth POST/PATCH/DELETE routes
   const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
     const session = (req as any).session;
