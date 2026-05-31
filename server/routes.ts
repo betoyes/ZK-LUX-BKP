@@ -2773,13 +2773,26 @@ Sitemap: ${baseUrl}/sitemap.xml
       const isProduction = process.env.NODE_ENV === "production";
 
       if (webhookToken) {
-        if (headerToken !== webhookToken) {
-          console.error("[Webhook ASAAS] Invalid token received — rejecting");
-          return res.status(200).json({ received: true, unauthorized: true });
+        // Constant-time comparison prevents timing-based brute-force of the
+        // webhook secret. timingSafeEqual throws if buffer lengths differ, so
+        // the length check must happen first (a length mismatch is itself a
+        // rejection, handled by tokenValid remaining false).
+        let tokenValid = false;
+        if (headerToken) {
+          const expected = Buffer.from(webhookToken);
+          const received = Buffer.from(headerToken);
+          tokenValid =
+            expected.length === received.length &&
+            crypto.timingSafeEqual(expected, received);
+        }
+        if (!tokenValid) {
+          console.error("[Webhook ASAAS] Invalid or missing token — rejecting");
+          // Return generic 200 without hinting at the reason for rejection.
+          return res.status(200).json({ received: true });
         }
       } else if (isProduction) {
         console.error("[Webhook ASAAS] ASAAS_WEBHOOK_TOKEN not configured in production — rejecting for security");
-        return res.status(200).json({ received: true, unauthorized: true });
+        return res.status(200).json({ received: true });
       } else {
         console.warn("[Webhook ASAAS] ASAAS_WEBHOOK_TOKEN not configured — processing without auth (dev mode)");
       }
