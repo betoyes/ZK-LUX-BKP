@@ -20,7 +20,7 @@ import {
   type CartItemRow,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, isNotNull, isNull, asc, and, gt, gte, sql } from "drizzle-orm";
+import { eq, desc, isNotNull, isNull, asc, and, gt, gte, sql, lt } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -126,6 +126,7 @@ export interface IStorage {
   updateDataExportRequest(requestId: number, data: Partial<DataExportRequest>): Promise<DataExportRequest | undefined>;
   anonymizeUser(userId: number): Promise<User>;
   softDeleteUser(userId: number): Promise<User>;
+  purgeExpiredSoftDeletedUsers(): Promise<number>;
   getAllUserData(userId: number): Promise<{
     user: Omit<User, 'password'>;
     orders: any[];
@@ -712,9 +713,20 @@ export class DatabaseStorage implements IStorage {
       const existingAsaasCustomer = await this.getAsaasCustomerByEmail(originalEmail.toLowerCase());
       if (existingAsaasCustomer) {
         await db.update(asaasCustomers)
-          .set({ name: anonPrefix, email: anonEmail })
+          .set({ name: anonPrefix, email: anonEmail, cpfCnpj: 'ANONYMIZED', phone: null })
           .where(eq(asaasCustomers.id, existingAsaasCustomer.id));
       }
+    }
+
+    // Belt-and-braces: also anonymize asaas customer found via userId in case the
+    // email lookup above missed it (e.g. email field already modified or different casing).
+    const [asaasCustomerByUserId] = await db.select()
+      .from(asaasCustomers)
+      .where(eq(asaasCustomers.userId, userId));
+    if (asaasCustomerByUserId && asaasCustomerByUserId.email !== `ANON_${userId}@anonymous.local`) {
+      await db.update(asaasCustomers)
+        .set({ name: anonPrefix, email: `ANON_${userId}@anonymous.local`, cpfCnpj: 'ANONYMIZED', phone: null })
+        .where(eq(asaasCustomers.id, asaasCustomerByUserId.id));
     }
 
     // Also anonymize orders that carry a direct userId reference (belt-and-braces:
@@ -735,7 +747,16 @@ export class DatabaseStorage implements IStorage {
       .set({
         username: anonEmail,
         email: anonEmail,
+        fullName: null,
         phone: null,
+        cpfCnpj: null,
+        addressStreet: null,
+        addressNumber: null,
+        addressComplement: null,
+        addressNeighborhood: null,
+        addressCity: null,
+        addressState: null,
+        addressZip: null,
         password: 'ANONYMIZED',
         anonymizedAt: new Date().toISOString(),
         consentMarketing: false,
@@ -763,6 +784,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return updated;
+  }
+
+  async purgeExpiredSoftDeletedUsers(): Promise<number> {
+    const now = new Date().toISOString();
+    // Find soft-deleted users whose 30-day retention window has expired and
+    // that have not been anonymized yet.
+    const expired = await db.select({ id: users.id })
+      .from(users)
+      .where(
+        and(
+          isNotNull(users.deletedAt),
+          isNull(users.anonymizedAt),
+          lt(users.retentionExpiresAt, now),
+        )
+      );
+    for (const { id } of expired) {
+      await this.anonymizeUser(id);
+    }
+    return expired.length;
   }
 
   async getAllUserData(userId: number): Promise<{

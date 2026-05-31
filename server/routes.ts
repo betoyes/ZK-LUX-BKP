@@ -941,10 +941,10 @@ export async function registerRoutes(
                 userAgent,
                 { reason: "email_not_verified" },
               );
+              // Generic message — do not reveal that credentials were correct
+              // or that the account exists but is unverified (enumeration signal).
               return res.status(401).json({
-                message:
-                  "Por favor, verifique seu email antes de fazer login. Verifique sua caixa de entrada.",
-                code: "EMAIL_NOT_VERIFIED",
+                message: "Credenciais inválidas",
               });
             }
           }
@@ -1921,7 +1921,7 @@ export async function registerRoutes(
       }
 
       // Default type is 'newsletter' for signups from the site footer
-      const subscriber = await storage.createSubscriber({
+      await storage.createSubscriber({
         ...data,
         type: data.type || "newsletter",
       });
@@ -1931,7 +1931,9 @@ export async function registerRoutes(
       // quota and flood the admin inbox by cycling unique addresses.  Admins
       // can review new subscribers through the admin dashboard instead.
 
-      res.status(201).json(subscriber);
+      // Return the same response as the "already subscribed" path above so
+      // callers cannot distinguish new vs existing subscribers (enumeration).
+      res.status(200).json({ message: "Inscrição confirmada!" });
     } catch (err) {
       next(err);
     }

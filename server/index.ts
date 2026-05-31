@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import compression from "compression";
+import { storage } from "./storage";
 
 
 const app = express();
@@ -126,6 +127,21 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(httpServer, app);
+
+  // LGPD soft-delete cleanup: anonymize accounts whose 30-day retention window
+  // has expired. Runs on startup and every 6 hours thereafter.
+  async function runLgpdCleanup() {
+    try {
+      const purged = await storage.purgeExpiredSoftDeletedUsers();
+      if (purged > 0) {
+        log(`LGPD cleanup: anonymized ${purged} expired soft-deleted account(s)`, "lgpd");
+      }
+    } catch (err) {
+      console.error("LGPD cleanup error:", err);
+    }
+  }
+  runLgpdCleanup();
+  setInterval(runLgpdCleanup, 6 * 60 * 60 * 1000);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
