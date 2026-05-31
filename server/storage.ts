@@ -148,6 +148,7 @@ export interface IStorage {
   getAsaasPaymentByAsaasId(asaasPaymentId: string): Promise<AsaasPayment | undefined>;
   createAsaasPayment(payment: InsertAsaasPayment): Promise<AsaasPayment>;
   updateAsaasPayment(id: number, payment: Partial<InsertAsaasPayment>): Promise<AsaasPayment | undefined>;
+  atomicConfirmAsaasPayment(id: number, newStatus: string, paymentDate: string): Promise<boolean>;
   getAsaasPaymentsByCustomerId(asaasCustomerId: number): Promise<AsaasPayment[]>;
 
   // Cart (server-side for authenticated users)
@@ -743,6 +744,13 @@ export class DatabaseStorage implements IStorage {
     // Clear cart — cart items are personal data tied to the userId.
     await this.clearCartByUserId(userId);
 
+    // Clear data-export download URLs. Each URL is a base64-encoded JSON snapshot
+    // containing the full personal data profile at export time. Retaining it after
+    // anonymization would leave the complete identity accessible via the stored URL.
+    await db.update(dataExportRequests)
+      .set({ downloadUrl: null })
+      .where(eq(dataExportRequests.userId, userId));
+
     const [updated] = await db.update(users)
       .set({
         username: anonEmail,
@@ -905,6 +913,24 @@ export class DatabaseStorage implements IStorage {
       .where(eq(asaasPayments.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // Atomic status transition: only updates the row if it has not already been
+  // marked CONFIRMED or RECEIVED. Returns true when this caller won the race
+  // (the row was updated), false when another concurrent call already processed
+  // the payment. This prevents duplicate order updates and double emails when
+  // the same webhook event arrives more than once simultaneously.
+  async atomicConfirmAsaasPayment(id: number, newStatus: string, paymentDate: string): Promise<boolean> {
+    const result = await db.update(asaasPayments)
+      .set({ status: newStatus, paymentDate, updatedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(asaasPayments.id, id),
+          sql`${asaasPayments.status} NOT IN ('CONFIRMED', 'RECEIVED')`
+        )
+      )
+      .returning({ id: asaasPayments.id });
+    return result.length > 0;
   }
 
   async getAsaasPaymentsByCustomerId(asaasCustomerId: number): Promise<AsaasPayment[]> {

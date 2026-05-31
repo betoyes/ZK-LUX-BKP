@@ -467,6 +467,9 @@ export async function registerRoutes(
           // Do not reveal whether the email is already registered (email enumeration
           // prevention). Return the same generic success response so callers cannot
           // distinguish "new account created" from "email already taken".
+          // Run the same bcrypt.hash that the new-user path runs so both branches
+          // take the same wall-clock time — prevents timing-based enumeration.
+          await bcrypt.hash(password, 12);
           return res.status(201).json({
             message:
               "Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.",
@@ -2801,14 +2804,26 @@ Sitemap: ${baseUrl}/sitemap.xml
         return res.status(200).json({ received: true });
       }
 
-      const alreadyProcessed = ["CONFIRMED", "RECEIVED"].includes(localPayment.status);
-      if (alreadyProcessed) {
+      // Fast path: if the local record already shows a terminal status skip
+      // immediately without hitting the DB again (handles replays cheaply).
+      if (["CONFIRMED", "RECEIVED"].includes(localPayment.status)) {
         console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} already processed (status: ${localPayment.status}) — skipping`);
         return res.status(200).json({ received: true, alreadyProcessed: true });
       }
 
       const newStatus = event === "PAYMENT_RECEIVED" ? "RECEIVED" : "CONFIRMED";
       const paymentDate = payment.paymentDate || new Date().toISOString().split("T")[0];
+
+      // Atomic status update: only the first concurrent caller succeeds.
+      // If two identical webhook events arrive simultaneously, both read a
+      // non-terminal status above, but only one will win this UPDATE.
+      // The loser receives false and exits without duplicating order/email work.
+      const claimed = await storage.atomicConfirmAsaasPayment(localPayment.id, newStatus, paymentDate);
+      if (!claimed) {
+        console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} already claimed by concurrent request — skipping`);
+        return res.status(200).json({ received: true, alreadyProcessed: true });
+      }
+      console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} updated to ${newStatus}`);
 
       let order = await storage.getOrderByPaymentId(localPayment.id);
 
@@ -2839,12 +2854,6 @@ Sitemap: ${baseUrl}/sitemap.xml
         });
         console.log(`[Webhook ASAAS] Order ${orderId} created as confirmed`);
       }
-
-      await storage.updateAsaasPayment(localPayment.id, {
-        status: newStatus,
-        paymentDate,
-      });
-      console.log(`[Webhook ASAAS] Payment ${asaasPaymentId} updated to ${newStatus}`);
 
       let customerEmail: string | null = null;
       let customerNameForEmail = "Cliente";
