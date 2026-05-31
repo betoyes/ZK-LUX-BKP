@@ -124,6 +124,12 @@ const publicCatalogLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// In-process sitemap cache — avoids 4 full-table reads on every request.
+// The sitemap changes only when products/categories/collections/posts change,
+// so a 10-minute TTL is a safe trade-off between freshness and DB load.
+let sitemapCache: { xml: string; expiresAt: number } | null = null;
+const SITEMAP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
 // Limiter for the CSRF-token endpoint — prevents token-harvesting loops.
 const csrfTokenLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -1616,6 +1622,7 @@ export async function registerRoutes(
   // Generic endpoint for version images
   app.get(
     "/api/products/:id/:field(version1|version2|version3)",
+    publicCatalogLimiter,
     async (req, res, next) => {
       try {
         res.set(
@@ -1623,6 +1630,9 @@ export async function registerRoutes(
           "public, max-age=604800, stale-while-revalidate=2592000, immutable",
         );
         const id = parseInt(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({ message: "ID de produto inválido" });
+        }
         const field = req.params.field as "version1" | "version2" | "version3";
         const product = await storage.getProductById(id);
         if (!product || !product[field]) {
@@ -2643,9 +2653,17 @@ Sitemap: ${baseUrl}/sitemap.xml
 `);
   });
 
-  app.get("/sitemap.xml", async (req, res, next) => {
+  app.get("/sitemap.xml", publicCatalogLimiter, async (req, res, next) => {
     try {
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      // Serve from cache if still valid — avoids full-table reads on every hit
+      const now = Date.now();
+      if (sitemapCache && sitemapCache.expiresAt > now) {
+        res.type("application/xml");
+        res.set("Cache-Control", "public, max-age=600, stale-while-revalidate=3600");
+        return res.send(sitemapCache.xml);
+      }
+
+      const baseUrl = getTrustedBaseUrl(req);
       const products = await storage.getProducts();
       const categories = await storage.getCategories();
       const collections = await storage.getCollections();
@@ -2699,7 +2717,11 @@ Sitemap: ${baseUrl}/sitemap.xml
 
       xml += `</urlset>`;
 
+      // Store in cache for next requests
+      sitemapCache = { xml, expiresAt: Date.now() + SITEMAP_TTL_MS };
+
       res.type("application/xml");
+      res.set("Cache-Control", "public, max-age=600, stale-while-revalidate=3600");
       res.send(xml);
     } catch (err) {
       next(err);
