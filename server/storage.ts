@@ -706,6 +706,15 @@ export class DatabaseStorage implements IStorage {
           .set({ customer: anonPrefix })
           .where(eq(orders.customerId, existingCustomer.id));
       }
+
+      // Anonymize asaas customer record so the original email cannot be used
+      // to look up payment history after account deletion.
+      const existingAsaasCustomer = await this.getAsaasCustomerByEmail(originalEmail.toLowerCase());
+      if (existingAsaasCustomer) {
+        await db.update(asaasCustomers)
+          .set({ name: anonPrefix, email: anonEmail })
+          .where(eq(asaasCustomers.id, existingAsaasCustomer.id));
+      }
     }
 
     // Also anonymize orders that carry a direct userId reference (belt-and-braces:
@@ -713,6 +722,14 @@ export class DatabaseStorage implements IStorage {
     await db.update(orders)
       .set({ customer: anonPrefix })
       .where(eq(orders.userId, userId));
+
+    // Delete tokens — an anonymized account must not have usable verification
+    // or password-reset links that could re-activate access to the identity.
+    await this.deleteEmailVerificationTokensByUserId(userId);
+    await this.deletePasswordResetTokensByUserId(userId);
+
+    // Clear cart — cart items are personal data tied to the userId.
+    await this.clearCartByUserId(userId);
 
     const [updated] = await db.update(users)
       .set({
@@ -732,6 +749,12 @@ export class DatabaseStorage implements IStorage {
 
   async softDeleteUser(userId: number): Promise<User> {
     const retentionDays = 30;
+
+    // Invalidate all active tokens so they cannot be used to re-authenticate
+    // or re-access the account during the 30-day retention window.
+    await this.deleteEmailVerificationTokensByUserId(userId);
+    await this.invalidatePasswordResetTokensByUserId(userId);
+
     const [updated] = await db.update(users)
       .set({
         deletedAt: new Date().toISOString(),

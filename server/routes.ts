@@ -539,9 +539,6 @@ export async function registerRoutes(
         }
 
         res.status(201).json({
-          id: user.id,
-          username: user.username,
-          role: user.role,
           message:
             "Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.",
         });
@@ -944,7 +941,7 @@ export async function registerRoutes(
                 userAgent,
                 { reason: "email_not_verified" },
               );
-              return res.status(403).json({
+              return res.status(401).json({
                 message:
                   "Por favor, verifique seu email antes de fazer login. Verifique sua caixa de entrada.",
                 code: "EMAIL_NOT_VERIFIED",
@@ -1917,10 +1914,10 @@ export async function registerRoutes(
       };
       const data = insertSubscriberSchema.parse(bodyWithDefaults);
 
-      // Check if email already exists
+      // Check if email already exists — return generic success to prevent subscriber enumeration
       const existing = await storage.getSubscriberByEmail(data.email);
       if (existing) {
-        return res.status(400).json({ message: "Email já cadastrado" });
+        return res.status(200).json({ message: "Inscrição confirmada!" });
       }
 
       // Default type is 'newsletter' for signups from the site footer
