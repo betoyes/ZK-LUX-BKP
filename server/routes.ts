@@ -3025,6 +3025,8 @@ Sitemap: ${baseUrl}/sitemap.xml
   // Create Credit Card payment
   app.post(
     "/api/payments/credit-card",
+    requireAuth,
+    pixCreationLimiter,
     paymentLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
@@ -3141,8 +3143,11 @@ Sitemap: ${baseUrl}/sitemap.xml
         });
       } catch (err: any) {
         console.error("Error creating Credit Card payment:", err);
+        // Return a generic message regardless of the gateway's specific decline
+        // reason. Reflecting the raw error would let attackers use this endpoint
+        // as a card-testing oracle (live vs. declined vs. invalid card).
         res.status(400).json({
-          message: err.message || "Erro ao processar pagamento com cartão",
+          message: "Não foi possível processar o pagamento com cartão. Verifique os dados e tente novamente.",
         });
       }
     },
