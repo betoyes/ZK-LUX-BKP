@@ -75,10 +75,13 @@
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - `POST /api/subscribers` has no rate limiter and lets anonymous callers trigger unbounded subscriber inserts plus admin notification emails, creating quota, inbox-flood, and availability risk
-  - checkout stores guest `allowedPaymentIds` in the browser session, but logout does not destroy the session and login does not regenerate it, so a later user in the same browser session can read earlier payment-status data
-  - `sendOrderConfirmationEmail` interpolates raw checkout `name` into HTML email content, allowing paid attackers to send branded confirmation emails with injected HTML to recipient addresses they supply at checkout
+  - `POST /api/auth/login` accepts cross-site login requests without CSRF or Origin validation, allowing login CSRF / session swapping into an attacker-controlled account
+  - the global session + CSRF-token seeding middleware writes a fresh PostgreSQL-backed session for anonymous requests, allowing unauthenticated session-store exhaustion
 - Re-validated as fixed and not reproposed:
+  - `POST /api/subscribers` now has a dedicated limiter, so the prior anonymous admin-email / quota abuse path is no longer present in the same form
+  - logout destroys the server-side session and clears `connect.sid`, so stale guest payment authorization data is not inherited by later users of the same browser session
+  - login regenerates the session before `req.logIn(...)`, addressing the prior session fixation concern
+  - order-confirmation emails now escape checkout `name`, closing the prior HTML email injection path
   - deleted or anonymized accounts are blocked from login and deserialization
   - account deletion, anonymization, and authenticated password changes revoke all active sessions
   - host-header injection into password-reset and verification emails
@@ -97,3 +100,4 @@
   - storing LGPD export payloads in `data_export_requests.downloadUrl` because it does not materially expand exposure beyond existing database access and was treated as privacy hardening rather than a distinct exploitable vulnerability
   - `X-Forwarded-For` rate-limit bypass because this scan did not establish that client-supplied forwarded IPs survive the production proxy chain to the actual limiter key
   - anonymous subscriber `type` selection because it mainly pollutes business funnel data without crossing a meaningful security boundary
+  - credit-card response handling stores only Asaas last-four data rather than full PAN, so it was not treated as card-data exposure
