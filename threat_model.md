@@ -77,9 +77,8 @@
 - Confirmed production-impact issues in the current code are concentrated in these areas:
   - public auth and recovery endpoints still leak account state through response timing because real-account branches await password hashing, token writes, and outbound Resend email delivery before responding
   - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves personal data behind in retained `audit_logs` rows even after the export-blob retention path was narrowed
-  - `GET /api/payments/:paymentId/status` can write terminal gateway states into the local payment row before the webhook runs, causing the later webhook fast path to skip order creation, confirmation email, and admin notification
   - public subscriber data is exported by the admin dashboard into CSV without formula neutralization, so attacker-controlled subscriber fields can execute spreadsheet formulas when operators open the export
-  - `server/index.ts` still applies 50 MB body parsing to `POST /api/products` and `PATCH /api/products/:id` before `requireAdmin` runs, leaving a narrowed but real unauthenticated request-body DoS path on those admin product URLs
+  - `server/index.ts` still allows unauthenticated callers to reach the 10 MB admin-product body parser before `requireAdmin` by sending a dummy `Cookie` header or omitting `Content-Length` on chunked requests
 - Re-validated as fixed and not reproposed:
   - `POST /api/auth/login` now returns the same generic 401 response for unverified and invalid-credential cases, so the prior unverified-account response oracle was not reproduced
   - `POST /api/subscribers` now returns the same success response for new and existing emails, so the prior subscriber-presence oracle was not reproduced
@@ -102,6 +101,7 @@
   - payment-status ownership checks between distinct authenticated users
   - production webhook authentication for Asaas when properly configured
   - replayed or concurrent Asaas webhooks creating duplicate paid orders, now that `storage.atomicConfirmAsaasPayment()` claims the transition before order creation
+  - payment-status polling suppressing webhook-driven order creation, because `GET /api/payments/:paymentId/status` now refuses to persist terminal gateway states and leaves webhook confirmation/order creation authoritative
   - product variant media DoS on `version1` / `version2` / `version3`
   - sitemap rebuild DoS on `GET /sitemap.xml`
   - HTML escaping in admin/operator notification emails
