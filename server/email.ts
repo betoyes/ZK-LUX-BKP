@@ -324,7 +324,7 @@ export async function sendOrderConfirmationEmail(params: {
                     <td style="padding: 32px 40px 0;">
                       <div style="border: 1px solid #e8e0d5; background: #fdf9f4; padding: 16px 20px; text-align: center;">
                         <p style="margin: 0 0 4px; font-size: 10px; letter-spacing: 3px; color: #b09060; text-transform: uppercase; font-family: 'Helvetica Neue', Arial, sans-serif;">Número do Pedido</p>
-                        <p style="margin: 0; font-size: 18px; letter-spacing: 3px; color: #1a1208; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 500;">#${orderId}</p>
+                        <p style="margin: 0; font-size: 18px; letter-spacing: 3px; color: #1a1208; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 500;">#${escapeHtml(orderId)}</p>
                       </div>
                     </td>
                   </tr>
@@ -354,7 +354,7 @@ export async function sendOrderConfirmationEmail(params: {
                         </tr>
                         <tr>
                           <td style="padding-top: 8px; font-size: 12px; color: #b09060; font-family: 'Helvetica Neue', Arial, sans-serif;">Pagamento</td>
-                          <td style="padding-top: 8px; font-size: 12px; color: #b09060; text-align: right; font-family: 'Helvetica Neue', Arial, sans-serif;">${paymentMethod} · ${formattedDate}</td>
+                          <td style="padding-top: 8px; font-size: 12px; color: #b09060; text-align: right; font-family: 'Helvetica Neue', Arial, sans-serif;">${escapeHtml(paymentMethod)} · ${escapeHtml(formattedDate)}</td>
                         </tr>
                       </table>
                     </td>
