@@ -3234,18 +3234,28 @@ Sitemap: ${baseUrl}/sitemap.xml
           localPayment.asaasPaymentId,
         );
 
-        // Update local status if changed — but never downgrade a terminal status.
-        // A CONFIRMED or RECEIVED payment cannot become PENDING again via polling;
-        // only the webhook flow (with its atomic guard) may set terminal status.
+        // Polling may only update non-terminal → non-terminal transitions.
+        // It must NEVER write CONFIRMED or RECEIVED to the local DB, even when
+        // Asaas reports those statuses. Writing a terminal status here would
+        // cause the webhook handler to see "already terminal" on arrival and
+        // skip order creation and confirmation emails entirely.
+        // The webhook's atomicConfirmAsaasPayment is the only authorised path
+        // to terminal status; it includes atomic deduplication and triggers the
+        // full post-payment flow (order, emails, admin notification).
         const terminalStatuses = ["CONFIRMED", "RECEIVED"];
         const alreadyTerminal = terminalStatuses.includes(localPayment.status);
-        if (!alreadyTerminal && asaasPayment.status !== localPayment.status) {
+        const incomingIsTerminal = terminalStatuses.includes(asaasPayment.status);
+        if (!alreadyTerminal && !incomingIsTerminal && asaasPayment.status !== localPayment.status) {
           await storage.updateAsaasPayment(localPayment.id, {
             status: asaasPayment.status,
             paymentDate: asaasPayment.paymentDate,
           });
         }
 
+        // Return the Asaas-reported status so the client's polling loop can
+        // display "payment confirmed" to the user while the webhook races to
+        // complete the server-side flow. The local DB update is intentionally
+        // withheld for terminal statuses so the webhook always runs its path.
         res.json({
           paymentId: localPayment.id,
           status: asaasPayment.status,
