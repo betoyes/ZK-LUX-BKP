@@ -75,27 +75,29 @@
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - public authentication endpoints disclose whether an email address exists and whether it is already verified, enabling account enumeration
-  - public unauthenticated credit-card checkout can be abused as a card-testing oracle because gateway outcomes are relayed back to the caller and the route is protected only by a mild per-IP limiter
-  - account anonymization frees the original email in `users` but LGPD aggregation still links `subscribers` / `customers` / `orders` by email, so a later account reusing that address can receive prior-user data
-  - public product variant media endpoints for `version1` / `version2` / `version3` miss the catalog limiter and can force repeated DB fetch + base64 decode work on large media blobs
-  - public `GET /sitemap.xml` rebuilds its response from heavyweight full-table reads without a limiter, creating an origin-amplification DoS path
+  - `POST /api/auth/login` still discloses when a real customer account exists but has not verified its email yet, via a distinct `403` + `EMAIL_NOT_VERIFIED` response after a correct password check
+  - public `POST /api/subscribers` still discloses whether an email is already present in the shared subscriber / lead / customer table, exposing whether an address already has a relationship with the store
 - Re-validated as fixed and not reproposed:
   - `POST /api/auth/login` now enforces a valid CSRF token, so the prior login-CSRF / session-swapping issue was not reproduced
   - `GET /api/auth/csrf-token` now returns a stateless token for anonymous callers without seeding PostgreSQL sessions, so the prior anonymous session-store exhaustion path was not reproduced
   - `POST /api/subscribers` now has a dedicated limiter, so the prior anonymous admin-email / quota abuse path is no longer present in the same form
+  - registration and resend-verification flows now return generic responses, so the earlier broader auth-enumeration issue was narrowed to the login-only unverified-account signal
   - logout destroys the server-side session and clears `connect.sid`, so stale guest payment authorization data is not inherited by later users of the same browser session
   - login regenerates the session before `req.logIn(...)`, addressing the prior session fixation concern
   - order-confirmation emails now escape checkout `name`, closing the prior HTML email injection path
   - deleted or anonymized accounts are blocked from login and deserialization
   - account deletion, anonymization, and authenticated password changes revoke all active sessions
+  - account anonymization now removes subscriber linkage and rewrites customer-linked email fields, so the prior LGPD cross-account linkage issue was not reproduced
   - host-header injection into password-reset and verification emails
   - globally oversized request-body parsing on public endpoints
   - full API-response logging that copied PII, CSRF tokens, payment data, and LGPD export data into logs
   - prior client-trusted payment totals
+  - unauthenticated credit-card checkout / card-testing oracle
   - unauthenticated PIX checkout creating local orders and admin sale notifications before payment settlement
   - payment-status ownership checks between distinct authenticated users
   - production webhook authentication for Asaas when properly configured
+  - product variant media DoS on `version1` / `version2` / `version3`
+  - sitemap rebuild DoS on `GET /sitemap.xml`
   - HTML escaping in admin/operator notification emails
 - Reviewed but not proposed this scan:
   - `GET /api/payments/config` sandbox disclosure because it is mainly supportive/derivative once the payment-simulation route is fixed
