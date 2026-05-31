@@ -76,8 +76,10 @@
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
   - public auth and recovery endpoints still leak account state through response timing because real-account branches await password hashing, token writes, and outbound Resend email delivery before responding
-  - `POST /api/webhooks/asaas` can create duplicate confirmed orders for one settled payment when the same valid webhook is replayed or delivered concurrently before the first request finishes updating local state
-  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves personal data behind in `audit_logs.details` and previously generated `data_export_requests.downloadUrl` blobs even though the success message says personal data was removed
+  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves personal data behind in retained `audit_logs` rows even after the export-blob retention path was narrowed
+  - `GET /api/payments/:paymentId/status` can write terminal gateway states into the local payment row before the webhook runs, causing the later webhook fast path to skip order creation, confirmation email, and admin notification
+  - public subscriber data is exported by the admin dashboard into CSV without formula neutralization, so attacker-controlled subscriber fields can execute spreadsheet formulas when operators open the export
+  - `server/index.ts` still applies 50 MB body parsing to `POST /api/products` and `PATCH /api/products/:id` before `requireAdmin` runs, leaving a narrowed but real unauthenticated request-body DoS path on those admin product URLs
 - Re-validated as fixed and not reproposed:
   - `POST /api/auth/login` now returns the same generic 401 response for unverified and invalid-credential cases, so the prior unverified-account response oracle was not reproduced
   - `POST /api/subscribers` now returns the same success response for new and existing emails, so the prior subscriber-presence oracle was not reproduced
@@ -92,13 +94,14 @@
   - account deletion, anonymization, and authenticated password changes revoke all active sessions
   - account anonymization now removes subscriber linkage and rewrites customer-linked email fields, so the prior LGPD cross-account linkage issue was not reproduced
   - host-header injection into password-reset and verification emails
-  - globally oversized request-body parsing on public endpoints
+  - the earlier broad oversized request-body parsing issue across ordinary public endpoints, although a narrowed pre-auth large-body path still remains on admin product URLs
   - full API-response logging that copied PII, CSRF tokens, payment data, and LGPD export data into logs
   - prior client-trusted payment totals
   - unauthenticated credit-card checkout / card-testing oracle
   - unauthenticated PIX checkout creating local orders and admin sale notifications before payment settlement
   - payment-status ownership checks between distinct authenticated users
   - production webhook authentication for Asaas when properly configured
+  - replayed or concurrent Asaas webhooks creating duplicate paid orders, now that `storage.atomicConfirmAsaasPayment()` claims the transition before order creation
   - product variant media DoS on `version1` / `version2` / `version3`
   - sitemap rebuild DoS on `GET /sitemap.xml`
   - HTML escaping in admin/operator notification emails
