@@ -1832,13 +1832,10 @@ export async function registerRoutes(
         type: data.type || "newsletter",
       });
 
-      // Send admin notification for new newsletter subscriber
-      sendAdminNotification("newsletter", {
-        email: data.email,
-        name: data.name,
-      }).catch((err) =>
-        console.error("Failed to send newsletter notification:", err),
-      );
+      // Admin notification intentionally omitted: sending an outbound email on
+      // every anonymous public signup would let an attacker exhaust the email
+      // quota and flood the admin inbox by cycling unique addresses.  Admins
+      // can review new subscribers through the admin dashboard instead.
 
       res.status(201).json(subscriber);
     } catch (err) {
