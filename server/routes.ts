@@ -172,6 +172,45 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+// Stateless CSRF token helpers for routes that cannot rely on session storage
+// (e.g. login, where the user is not yet authenticated).
+// Format: "{unixTimestamp}|{hexNonce}|{hmacHex}"
+// The HMAC is over "{timestamp}|{nonce}" using SESSION_SECRET, so the server
+// can verify authenticity without storing anything.
+function createStatelessCsrfToken(secret: string): string {
+  const nonce = crypto.randomBytes(24).toString("hex");
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const payload = `${ts}|${nonce}`;
+  const mac = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  return `${payload}|${mac}`;
+}
+
+function verifyStatelessCsrfToken(token: string, secret: string): boolean {
+  try {
+    const parts = token.split("|");
+    if (parts.length !== 3) return false;
+    const [ts, nonce, mac] = parts;
+    if (mac.length !== 64) return false; // SHA-256 hex is always 64 chars
+
+    const payload = `${ts}|${nonce}`;
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(payload)
+      .digest("hex");
+
+    // Constant-time comparison to prevent timing attacks
+    if (!crypto.timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"))) {
+      return false;
+    }
+
+    // Reject tokens older than 2 hours or from the future
+    const age = Math.floor(Date.now() / 1000) - parseInt(ts, 10);
+    return Number.isInteger(age) && age >= 0 && age < 7200;
+  } catch {
+    return false;
+  }
+}
+
 // Extend Express User type
 declare global {
   namespace Express {
@@ -350,9 +389,12 @@ export async function registerRoutes(
   // present by the time any protected mutation is attempted.
   app.get("/api/auth/csrf-token", csrfTokenLimiter, (req: any, res: Response) => {
     if (req.session?.csrfToken) {
+      // Authenticated session: return the session-stored token (set on login).
       return res.json({ csrfToken: req.session.csrfToken });
     }
-    res.json({ csrfToken: crypto.randomBytes(32).toString("hex") });
+    // Anonymous caller: return a stateless HMAC-signed token so the login
+    // endpoint can verify it without creating a session row.
+    res.json({ csrfToken: createStatelessCsrfToken(sessionSecret) });
   });
 
   // Customer registration endpoint (no CSRF - user not authenticated yet)
@@ -794,13 +836,29 @@ export async function registerRoutes(
     },
   );
 
-  // Login (no CSRF - user not authenticated yet)
+  // Login - CSRF protected via stateless HMAC-signed token
   app.post(
     "/api/auth/login",
     loginLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       const clientIp = getClientIp(req);
       const userAgent = getUserAgent(req);
+
+      // Reject requests that do not carry a valid CSRF token.
+      // Two valid paths:
+      //   1. Anonymous: HMAC-signed stateless token from GET /api/auth/csrf-token
+      //   2. Already-authenticated (edge case): session-stored token
+      const incomingCsrf = req.headers["x-csrf-token"] as string | undefined;
+      const sessionCsrf = (req as any).session?.csrfToken as string | undefined;
+      const csrfValid =
+        incomingCsrf &&
+        (verifyStatelessCsrfToken(incomingCsrf, sessionSecret) ||
+          (sessionCsrf && incomingCsrf === sessionCsrf));
+      if (!csrfValid) {
+        return res.status(403).json({
+          message: "Token CSRF inválido. Atualize a página e tente novamente.",
+        });
+      }
 
       // Validate input with Zod schema
       const validationResult = loginUserSchema.safeParse({
