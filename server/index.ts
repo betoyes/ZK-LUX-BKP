@@ -95,11 +95,19 @@ const largeUrlencodedParser = express.urlencoded({ extended: false, limit: '10mb
 // Blocking here avoids buffering up to 10 MB before requireAdmin can enforce
 // auth, and covers both explicit Content-Length spoofing and chunked transfer
 // encoding (which has no Content-Length header to inspect).
+// We check specifically for the session cookie name (connect.sid) rather than
+// any cookie presence — a generic Cookie header is trivially forged by any
+// HTTP client and would bypass a weaker check.
+const SESSION_COOKIE_NAME = 'connect.sid';
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!(LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method))) {
     return next();
   }
-  if (!req.headers.cookie) {
+  const rawCookie = req.headers.cookie || '';
+  const hasSessionCookie = rawCookie.split(';').some(
+    c => c.trim().startsWith(`${SESSION_COOKIE_NAME}=`)
+  );
+  if (!hasSessionCookie) {
     return res.status(401).json({ message: "Não autenticado" });
   }
   next();

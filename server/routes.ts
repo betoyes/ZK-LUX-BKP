@@ -1916,7 +1916,13 @@ export async function registerRoutes(
       const header = 'ID,Nome,Email,Tipo,Data,Status';
       const rows = list.map(s => csvRow([s.id, s.name || '', s.email, s.type || 'newsletter', s.date, s.status]));
       const csv = [header, ...rows].join('\r\n');
-      const filename = (type && typeof type === 'string') ? `${type}.csv` : 'todos_assinantes.csv';
+
+      // Sanitize filename: only allow alphanumeric, hyphens, and underscores to
+      // prevent HTTP header injection via a crafted ?type= query parameter.
+      const safeType = (type && typeof type === 'string')
+        ? type.replace(/[^a-z0-9_-]/gi, '_')
+        : '';
+      const filename = safeType ? `${safeType}.csv` : 'todos_assinantes.csv';
 
       res.set('Content-Type', 'text/csv; charset=utf-8');
       res.set('Content-Disposition', `attachment; filename="${filename}"`);
