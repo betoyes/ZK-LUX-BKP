@@ -3094,7 +3094,7 @@ Sitemap: ${baseUrl}/sitemap.xml
           createdAt: new Date().toISOString(),
         });
 
-        // Register payment in session so the same browser can poll status (guest checkout)
+        // Register payment in session so the same browser can poll status
         const sess = (req as any).session;
         if (sess) {
           sess.allowedPaymentIds = [...(sess.allowedPaymentIds || []), localPayment.id];

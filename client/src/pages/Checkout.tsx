@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle2, CreditCard, Truck, Loader2, MessageCircle, QrCode, Copy, Check, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { maskCep, isValidCep, calculateShipping, formatCurrency, type ShippingResult } from '@/lib/cep';
 import { WhatsAppLink } from '@/components/WhatsAppButton';
 import { useProducts } from '@/context/ProductContext';
@@ -138,8 +138,15 @@ export default function Checkout() {
   const [installments, setInstallments] = useState(1);
   const { toast } = useToast();
   const { cart, products, clearCart } = useProducts();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [profileLoaded, setProfileLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setLocation('/login');
+    }
+  }, [authLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
     if (isAuthenticated && !profileLoaded) {
