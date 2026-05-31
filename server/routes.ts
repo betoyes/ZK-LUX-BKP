@@ -2817,6 +2817,19 @@ Sitemap: ${baseUrl}/sitemap.xml
         }).catch((err) => console.error("[Webhook ASAAS] Failed to send confirmation email:", err));
       }
 
+      // Notify admin only after ASAAS confirms the payment — never at QR-code
+      // generation time. This prevents bots from spamming admin notifications
+      // by generating PIX QR codes they never pay.
+      if (order) {
+        sendAdminNotification("order", {
+          email: customerEmail || undefined,
+          name: customerNameForEmail,
+          total: localPayment.value,
+          orderId: order.orderId,
+          items: typeof order.items === "number" ? order.items : 1,
+        }).catch((err) => console.error("[Webhook ASAAS] Failed to send admin order notification:", err));
+      }
+
       return res.status(200).json({ received: true });
     } catch (err) {
       console.error("[Webhook ASAAS] Internal error processing webhook:", err);
@@ -2826,12 +2839,25 @@ Sitemap: ${baseUrl}/sitemap.xml
 
   // ============ PAYMENT ROUTES (ASAAS) ============
 
-  // Rate limiter for payment routes
+  // Rate limiter for payment status/simulate routes (permissive — used for polling)
   const paymentLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 10,
     message: {
       message: "Muitas tentativas de pagamento. Tente novamente em 15 minutos.",
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Dedicated rate limiter for PIX and credit-card *creation* routes.
+  // Kept tighter than the shared limiter to prevent bots from generating
+  // unlimited fake QR codes / fake orders per IP per hour.
+  const pixCreationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1-hour window
+    max: 5,                    // 5 payment creation attempts per IP per hour
+    message: {
+      message: "Muitas tentativas de pagamento. Tente novamente em uma hora.",
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -2848,7 +2874,7 @@ Sitemap: ${baseUrl}/sitemap.xml
   // Create PIX payment
   app.post(
     "/api/payments/pix",
-    paymentLimiter,
+    pixCreationLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         if (!asaas.isAsaasConfigured()) {
@@ -2959,14 +2985,10 @@ Sitemap: ${baseUrl}/sitemap.xml
           console.error("Failed to create order record:", orderErr);
         }
 
-        // Send admin notification
-        sendAdminNotification("order", {
-          email: data.email,
-          name: data.name,
-          total: serverTotal,
-          orderId,
-          items: totalItems || 1,
-        }).catch((err) => console.error("Failed to send order notification:", err));
+        // Admin notification is sent by the webhook handler after the payment
+        // is confirmed by ASAAS (PAYMENT_CONFIRMED / PAYMENT_RECEIVED events).
+        // Notifying here — before any money moves — would let bots spam the
+        // admin inbox simply by generating QR codes they never pay.
 
         res.json({
           paymentId: localPayment.id,
