@@ -1069,11 +1069,12 @@ export default function Dashboard() {
           <TabsContent value="overview" className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {(() => {
-                const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total || 0), 0);
+                const confirmedOrders = (Array.isArray(orders) ? orders : []).filter((o: any) => o.status !== "pending");
+                const totalRevenue = confirmedOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0);
                 const formattedRevenue = `R$ ${(totalRevenue / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 return [
-                  { title: "Receita Total", value: formattedRevenue, change: orders.length > 0 ? "+0%" : "-", icon: DollarSign },
-                  { title: "Vendas", value: `+${orders.length}`, change: "+0%", icon: TrendingUp },
+                  { title: "Receita Total", value: formattedRevenue, change: confirmedOrders.length > 0 ? "+0%" : "-", icon: DollarSign },
+                  { title: "Vendas", value: `+${confirmedOrders.length}`, change: "+0%", icon: TrendingUp },
                   { title: "Produtos", value: (Array.isArray(products) ? products.length : 0).toString(), change: "+0", icon: Package },
                   { title: "Clientes", value: (Array.isArray(customers) ? customers.length : 0).toString(), change: "+0", icon: Users },
                 ];

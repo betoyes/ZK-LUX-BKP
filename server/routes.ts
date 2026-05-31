@@ -2966,30 +2966,10 @@ Sitemap: ${baseUrl}/sitemap.xml
           sess.allowedPaymentIds = [...(sess.allowedPaymentIds || []), localPayment.id];
         }
 
-        // Create order record
-        const randomDigits = Math.floor(1000 + Math.random() * 9000);
-        const orderId = `ZK-${Date.now()}-${randomDigits}`;
-        const totalItems = data.cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
-        try {
-          await storage.createOrder({
-            orderId,
-            userId,
-            customer: data.name,
-            date: new Date().toISOString(),
-            status: "pending",
-            total: serverTotal,
-            items: totalItems || 1,
-            paymentId: localPayment.id,
-          });
-        } catch (orderErr) {
-          console.error("Failed to create order record:", orderErr);
-        }
-
         // Admin notification is sent by the webhook handler after the payment
         // is confirmed by ASAAS (PAYMENT_CONFIRMED / PAYMENT_RECEIVED events).
         // Notifying here — before any money moves — would let bots spam the
         // admin inbox simply by generating QR codes they never pay.
-
         res.json({
           paymentId: localPayment.id,
           asaasPaymentId: payment.id,
@@ -3111,34 +3091,6 @@ Sitemap: ${baseUrl}/sitemap.xml
         if (ccSess) {
           ccSess.allowedPaymentIds = [...(ccSess.allowedPaymentIds || []), localPayment.id];
         }
-
-        // Create order record
-        const ccRandomDigits = Math.floor(1000 + Math.random() * 9000);
-        const ccOrderId = `ZK-${Date.now()}-${ccRandomDigits}`;
-        const ccTotalItems = data.cartItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
-        try {
-          await storage.createOrder({
-            orderId: ccOrderId,
-            userId: ccUserId,
-            customer: data.name,
-            date: new Date().toISOString(),
-            status: "pending",
-            total: ccServerTotal,
-            items: ccTotalItems || 1,
-            paymentId: localPayment.id,
-          });
-        } catch (orderErr) {
-          console.error("Failed to create order record:", orderErr);
-        }
-
-        // Send admin notification
-        sendAdminNotification("order", {
-          email: data.email,
-          name: data.name,
-          total: ccServerTotal,
-          orderId: ccOrderId,
-          items: ccTotalItems || 1,
-        }).catch((err) => console.error("Failed to send order notification:", err));
 
         res.json({
           paymentId: localPayment.id,
