@@ -75,8 +75,9 @@
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - `POST /api/auth/login` still discloses when a real customer account exists but has not verified its email yet, via a distinct `403` + `EMAIL_NOT_VERIFIED` response after a correct password check
-  - public `POST /api/subscribers` still discloses whether an email is already present in the shared subscriber / lead / customer table, exposing whether an address already has a relationship with the store
+  - `POST /api/auth/login` still discloses when a real customer account exists but has not verified its email yet, via a distinct `401` + `EMAIL_NOT_VERIFIED` response after a correct password check
+  - public `POST /api/subscribers` still discloses whether an email is already present in the shared subscriber / lead / customer table, now via `200` for existing addresses versus `201` plus subscriber data for new ones
+  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves profile, address, and payment-linked PII behind even though the success message claims all personal data was removed
 - Re-validated as fixed and not reproposed:
   - `POST /api/auth/login` now enforces a valid CSRF token, so the prior login-CSRF / session-swapping issue was not reproduced
   - `GET /api/auth/csrf-token` now returns a stateless token for anonymous callers without seeding PostgreSQL sessions, so the prior anonymous session-store exhaustion path was not reproduced
@@ -105,6 +106,7 @@
   - admin-controlled product-media MIME issues because they did not create a meaningful new privilege boundary beyond existing admin control
   - `?full=true` product responses because the underlying media is already public and the remaining concern is mainly performance/design intent rather than a strong confidentiality issue
   - missing startup validation for `ASAAS_WEBHOOK_TOKEN` because it is an operator-misconfiguration availability failure, not an external attacker exploit path
+  - the delete-after-30-days retention promise on soft-deleted accounts, because this scan treated it as a retention/compliance gap without a distinct external attacker exploit path
   - storing LGPD export payloads in `data_export_requests.downloadUrl` because it does not materially expand exposure beyond existing database access and was treated as privacy hardening rather than a distinct exploitable vulnerability
   - the raw `x-forwarded-for` helper used for audit/payment metadata, because this scan did not establish production evidence that attacker-supplied forwarded values survive the platform proxy chain in an exploitable way
   - anonymous subscriber `type` selection because it mainly pollutes business funnel data without crossing a meaningful security boundary
