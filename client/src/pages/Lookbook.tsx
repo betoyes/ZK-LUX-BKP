@@ -75,7 +75,7 @@ export default function Lookbook() {
 
   const getCollectionImage = (
     collectionId: number,
-    fallback?: string | null,
+    fallback?: string,
   ) => {
     return (
       products.find(
