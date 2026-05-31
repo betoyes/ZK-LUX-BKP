@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import compression from "compression";
 import { storage } from "./storage";
+import { createHmac, timingSafeEqual } from "crypto";
 
 
 const app = express();
@@ -89,25 +90,63 @@ const largeJsonParser = express.json({
 const smallUrlencodedParser = express.urlencoded({ extended: false, limit: '100kb' });
 const largeUrlencodedParser = express.urlencoded({ extended: false, limit: '10mb' });
 
-// Reject unauthenticated callers on admin-only product routes BEFORE any body
-// parser runs. All routes matched by LARGE_BODY_PATHS require admin auth, so a
-// missing session cookie is definitive proof of an unauthenticated caller.
-// Blocking here avoids buffering up to 10 MB before requireAdmin can enforce
-// auth, and covers both explicit Content-Length spoofing and chunked transfer
-// encoding (which has no Content-Length header to inspect).
-// We check specifically for the session cookie name (connect.sid) rather than
-// any cookie presence — a generic Cookie header is trivially forged by any
-// HTTP client and would bypass a weaker check.
+// Reject callers with no valid session cookie on admin-only product routes
+// BEFORE any body parser runs. This prevents forged or absent session cookies
+// from triggering the 10 MB body parser.
+//
+// The check verifies the HMAC-SHA256 *signature* of the connect.sid cookie,
+// not just its presence. express-session signs cookies with SESSION_SECRET
+// using cookie-signature (HMAC-SHA256, base64 no-padding), producing the
+// format "s:{sessionId}.{hmac}". An attacker cannot forge a valid signature
+// without knowing the secret, so any unsigned or tampered cookie is rejected
+// here before a single byte of the body is buffered.
+//
+// Note: a valid signed cookie issued to a non-admin user will still pass this
+// pre-parser check, but requireAdmin in the route handler rejects it before
+// any business logic runs. The goal of this guard is strictly to prevent
+// unauthenticated/forged-cookie callers from causing 10 MB allocations.
 const SESSION_COOKIE_NAME = 'connect.sid';
+
+function hasValidSignedSessionCookie(cookieHeader: string): boolean {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return false;
+  for (const part of cookieHeader.split(';')) {
+    const eqIdx = part.indexOf('=');
+    if (eqIdx === -1) continue;
+    const name = part.slice(0, eqIdx).trim();
+    if (name !== SESSION_COOKIE_NAME) continue;
+    const raw = part.slice(eqIdx + 1).trim();
+    try {
+      const decoded = decodeURIComponent(raw);
+      // Signed cookies from express-session are prefixed with "s:"
+      if (!decoded.startsWith('s:')) return false;
+      const signed = decoded.slice(2); // "{sessionId}.{hmac}"
+      const dotIdx = signed.lastIndexOf('.');
+      if (dotIdx === -1) return false;
+      const data = signed.slice(0, dotIdx);
+      const mac = signed.slice(dotIdx + 1);
+      // Reproduce the HMAC exactly as cookie-signature does
+      const expected = createHmac('sha256', secret)
+        .update(data)
+        .digest('base64')
+        .replace(/=+$/, '');
+      // Constant-time comparison to prevent timing oracle attacks
+      const eBuf = Buffer.from(expected);
+      const mBuf = Buffer.from(mac);
+      if (eBuf.length !== mBuf.length) return false;
+      return timingSafeEqual(eBuf, mBuf);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!(LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method))) {
     return next();
   }
-  const rawCookie = req.headers.cookie || '';
-  const hasSessionCookie = rawCookie.split(';').some(
-    c => c.trim().startsWith(`${SESSION_COOKIE_NAME}=`)
-  );
-  if (!hasSessionCookie) {
+  if (!hasValidSignedSessionCookie(req.headers.cookie || '')) {
     return res.status(401).json({ message: "Não autenticado" });
   }
   next();
