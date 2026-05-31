@@ -355,17 +355,27 @@ export async function registerRoutes(
     next();
   };
 
+  // Precomputed bcrypt hash used for a constant-time dummy comparison when the
+  // username does not exist. Prevents timing-based email enumeration: without
+  // this, the absence of a bcrypt.compare() call when the user is missing would
+  // make that branch visibly faster to a remote attacker.
+  const DUMMY_BCRYPT_HASH =
+    "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6hsIGbODi";
+
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
         if (!user) {
-          return done(null, false, { message: "Usuário não encontrado" });
+          // Perform a dummy compare so this branch takes the same wall-clock
+          // time as a valid-user/wrong-password branch (timing-attack mitigation).
+          await bcrypt.compare(password, DUMMY_BCRYPT_HASH);
+          return done(null, false, { message: "Credenciais inválidas" });
         }
 
         const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) {
-          return done(null, false, { message: "Senha incorreta" });
+          return done(null, false, { message: "Credenciais inválidas" });
         }
 
         return done(null, {
@@ -454,7 +464,13 @@ export async function registerRoutes(
 
         const existingUser = await storage.getUserByUsername(email);
         if (existingUser) {
-          return res.status(400).json({ message: "Este email já está em uso" });
+          // Do not reveal whether the email is already registered (email enumeration
+          // prevention). Return the same generic success response so callers cannot
+          // distinguish "new account created" from "email already taken".
+          return res.status(201).json({
+            message:
+              "Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.",
+          });
         }
 
         const hashedPassword = await bcrypt.hash(password, 12);
@@ -621,9 +637,11 @@ export async function registerRoutes(
         }
 
         if (user.emailVerified) {
+          // Return the same generic message used when the user does not exist to
+          // prevent email-enumeration via differentiated responses.
           return res.json({
             message:
-              "Este email já foi verificado. Você pode fazer login normalmente.",
+              "Se o email existir em nossa base, você receberá um novo link de verificação.",
           });
         }
 

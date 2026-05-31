@@ -680,10 +680,44 @@ export class DatabaseStorage implements IStorage {
 
   async anonymizeUser(userId: number): Promise<User> {
     const anonPrefix = `ANON_${userId}`;
+    const anonEmail = `${anonPrefix}@anonymous.local`;
+
+    // Read the original email before wiping it so we can locate linked records.
+    const [originalUser] = await db.select().from(users).where(eq(users.id, userId));
+    const originalEmail = originalUser?.email || originalUser?.username;
+
+    if (originalEmail) {
+      // Remove subscriber record so the original email is no longer linkable.
+      const existingSub = await this.getSubscriberByEmail(originalEmail.toLowerCase());
+      if (existingSub) {
+        await db.delete(subscribers).where(eq(subscribers.id, existingSub.id));
+      }
+
+      // Anonymize the customer record (name + email) so order history is kept
+      // for audit but no longer tied to a real identity.
+      const existingCustomer = await this.getCustomerByEmail(originalEmail.toLowerCase());
+      if (existingCustomer) {
+        await db.update(customers)
+          .set({ name: anonPrefix, email: anonEmail })
+          .where(eq(customers.id, existingCustomer.id));
+
+        // Overwrite the denormalized customer-name field stored on each order.
+        await db.update(orders)
+          .set({ customer: anonPrefix })
+          .where(eq(orders.customerId, existingCustomer.id));
+      }
+    }
+
+    // Also anonymize orders that carry a direct userId reference (belt-and-braces:
+    // covers orders created before a customer record existed).
+    await db.update(orders)
+      .set({ customer: anonPrefix })
+      .where(eq(orders.userId, userId));
+
     const [updated] = await db.update(users)
       .set({
-        username: `${anonPrefix}@anonymous.local`,
-        email: `${anonPrefix}@anonymous.local`,
+        username: anonEmail,
+        email: anonEmail,
         phone: null,
         password: 'ANONYMIZED',
         anonymizedAt: new Date().toISOString(),
