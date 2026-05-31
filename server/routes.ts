@@ -877,7 +877,16 @@ export async function registerRoutes(
         if (userId) {
           await logAuditEvent(userId, "logout", clientIp, userAgent);
         }
-        res.json({ message: "Logout realizado com sucesso" });
+
+        // Destroy the session entirely so allowedPaymentIds and other
+        // session-scoped data cannot be read by the next user on this browser.
+        req.session.destroy((destroyErr) => {
+          if (destroyErr) {
+            console.error("[Auth] Failed to destroy session on logout:", destroyErr);
+          }
+          res.clearCookie("connect.sid");
+          res.json({ message: "Logout realizado com sucesso" });
+        });
       });
     },
   );
@@ -3064,12 +3073,14 @@ Sitemap: ${baseUrl}/sitemap.xml
         const reqUser = (req as any).user;
         const sessionAllowed: number[] = (req as any).session?.allowedPaymentIds || [];
 
-        // Allow access if: admin, authenticated owner, or same session that created it
         const isAdmin = reqUser?.role === "admin";
-        const isSessionOwner = sessionAllowed.includes(paymentIdNum);
         const isAuthenticated = req.isAuthenticated?.();
+        // Session ownership is only a valid credential for unauthenticated (guest) callers.
+        // For authenticated users, userId must match — ignoring session ownership prevents
+        // a leftover allowedPaymentIds entry from bypassing the per-user ownership check.
+        const isGuestSessionOwner = !isAuthenticated && sessionAllowed.includes(paymentIdNum);
 
-        if (!isAdmin && !isSessionOwner && !isAuthenticated) {
+        if (!isAdmin && !isAuthenticated && !isGuestSessionOwner) {
           return res.status(401).json({ message: "Não autenticado" });
         }
 
@@ -3078,9 +3089,9 @@ Sitemap: ${baseUrl}/sitemap.xml
           return res.status(404).json({ message: "Pagamento não encontrado" });
         }
 
-        // For authenticated non-admin users, enforce ownership
-        // Return 404 (not 403) to avoid leaking existence of other users' payments
-        if (isAuthenticated && !isAdmin && !isSessionOwner && localPayment.userId !== reqUser?.id) {
+        // Authenticated non-admin users must own the payment.
+        // Return 404 (not 403) to avoid leaking existence of other users' payments.
+        if (isAuthenticated && !isAdmin && localPayment.userId !== reqUser?.id) {
           return res.status(404).json({ message: "Pagamento não encontrado" });
         }
 
