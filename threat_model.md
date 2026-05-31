@@ -75,14 +75,16 @@
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - `POST /api/auth/login` still discloses when a real customer account exists but has not verified its email yet, via a distinct `401` + `EMAIL_NOT_VERIFIED` response after a correct password check
-  - public `POST /api/subscribers` still discloses whether an email is already present in the shared subscriber / lead / customer table, now via `200` for existing addresses versus `201` plus subscriber data for new ones
-  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves profile, address, and payment-linked PII behind even though the success message claims all personal data was removed
+  - public auth and recovery endpoints still leak account state through response timing because real-account branches await password hashing, token writes, and outbound Resend email delivery before responding
+  - `POST /api/webhooks/asaas` can create duplicate confirmed orders for one settled payment when the same valid webhook is replayed or delivered concurrently before the first request finishes updating local state
+  - `DELETE /api/lgpd/account` with `mode="anonymize"` still leaves personal data behind in `audit_logs.details` and previously generated `data_export_requests.downloadUrl` blobs even though the success message says personal data was removed
 - Re-validated as fixed and not reproposed:
+  - `POST /api/auth/login` now returns the same generic 401 response for unverified and invalid-credential cases, so the prior unverified-account response oracle was not reproduced
+  - `POST /api/subscribers` now returns the same success response for new and existing emails, so the prior subscriber-presence oracle was not reproduced
   - `POST /api/auth/login` now enforces a valid CSRF token, so the prior login-CSRF / session-swapping issue was not reproduced
   - `GET /api/auth/csrf-token` now returns a stateless token for anonymous callers without seeding PostgreSQL sessions, so the prior anonymous session-store exhaustion path was not reproduced
   - `POST /api/subscribers` now has a dedicated limiter, so the prior anonymous admin-email / quota abuse path is no longer present in the same form
-  - registration and resend-verification flows now return generic responses, so the earlier broader auth-enumeration issue was narrowed to the login-only unverified-account signal
+  - registration and resend-verification flows now return generic response bodies, so the earlier broader auth-enumeration issue was narrowed to a timing-only signal
   - logout destroys the server-side session and clears `connect.sid`, so stale guest payment authorization data is not inherited by later users of the same browser session
   - login regenerates the session before `req.logIn(...)`, addressing the prior session fixation concern
   - order-confirmation emails now escape checkout `name`, closing the prior HTML email injection path
@@ -101,13 +103,13 @@
   - sitemap rebuild DoS on `GET /sitemap.xml`
   - HTML escaping in admin/operator notification emails
 - Reviewed but not proposed this scan:
+  - malformed public content-route IDs plus the `server/index.ts` error middleware rethrow, because this scan confirmed the raw error-message leak risk but did not establish a reliable production crash path from ordinary request errors
   - `GET /api/payments/config` sandbox disclosure because it is mainly supportive/derivative once the payment-simulation route is fixed
   - missing explicit CSRF middleware on admin mutation routes because the production session cookie is explicitly `SameSite=Lax`, and no production-reachable bypass was demonstrated beyond unsupported browser assumptions
   - admin-controlled product-media MIME issues because they did not create a meaningful new privilege boundary beyond existing admin control
   - `?full=true` product responses because the underlying media is already public and the remaining concern is mainly performance/design intent rather than a strong confidentiality issue
   - missing startup validation for `ASAAS_WEBHOOK_TOKEN` because it is an operator-misconfiguration availability failure, not an external attacker exploit path
   - the delete-after-30-days retention promise on soft-deleted accounts, because this scan treated it as a retention/compliance gap without a distinct external attacker exploit path
-  - storing LGPD export payloads in `data_export_requests.downloadUrl` because it does not materially expand exposure beyond existing database access and was treated as privacy hardening rather than a distinct exploitable vulnerability
   - the raw `x-forwarded-for` helper used for audit/payment metadata, because this scan did not establish production evidence that attacker-supplied forwarded values survive the platform proxy chain in an exploitable way
   - anonymous subscriber `type` selection because it mainly pollutes business funnel data without crossing a meaningful security boundary
   - limited email-address logging in `server/email.ts`, because it did not rise to the level of a distinct externally exploitable exposure after the broader API-response logging issue was fixed
