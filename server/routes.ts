@@ -341,11 +341,18 @@ export async function registerRoutes(
   // ============ AUTH ROUTES ============
 
   // CSRF Token endpoint
+  // For authenticated sessions the existing session token is returned as-is.
+  // For anonymous callers a fresh token is generated and returned in the
+  // response body WITHOUT being written to the session, so no PostgreSQL
+  // session row is created for unauthenticated requests. All routes that
+  // actually enforce csrfProtection also require authentication, so the
+  // session-stored token (set during login's session.regenerate) is always
+  // present by the time any protected mutation is attempted.
   app.get("/api/auth/csrf-token", csrfTokenLimiter, (req: any, res: Response) => {
-    if (!req.session?.csrfToken) {
-      req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+    if (req.session?.csrfToken) {
+      return res.json({ csrfToken: req.session.csrfToken });
     }
-    res.json({ csrfToken: req.session.csrfToken });
+    res.json({ csrfToken: crypto.randomBytes(32).toString("hex") });
   });
 
   // Customer registration endpoint (no CSRF - user not authenticated yet)
