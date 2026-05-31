@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, logAuditEvent } from "./storage";
+import { adminLargeJsonParser, adminLargeUrlencodedParser } from "./parsers";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { pool } from "./db";
@@ -1720,7 +1721,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/products", requireAdmin, async (req, res, next) => {
+  app.post("/api/products", requireAdmin, adminLargeJsonParser, adminLargeUrlencodedParser, async (req, res, next) => {
     try {
       const data = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(data);
@@ -1804,7 +1805,7 @@ export async function registerRoutes(
     },
   );
 
-  app.patch("/api/products/:id", requireAdmin, async (req, res, next) => {
+  app.patch("/api/products/:id", requireAdmin, adminLargeJsonParser, adminLargeUrlencodedParser, async (req, res, next) => {
     try {
       const id = parseInt(req.params.id);
       const product = await storage.updateProduct(id, req.body);

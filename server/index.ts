@@ -5,7 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import compression from "compression";
 import { storage } from "./storage";
-import { createHmac, timingSafeEqual } from "crypto";
+import { smallJsonParser, smallUrlencodedParser } from "./parsers";
 
 
 const app = express();
@@ -71,95 +71,27 @@ declare module "http" {
   }
 }
 
-// Admin product routes (POST /api/products, PATCH /api/products/:id) need large
-// limits for base64-encoded image uploads. All other routes – including public
-// unauthenticated endpoints – are capped at 100 kb to prevent DoS via oversized
-// request bodies. This check must happen here, before any body parsing occurs,
-// because Express rejects over-limit bodies before route handlers run.
-const LARGE_BODY_PATHS = /^\/api\/products(\/\d+)?$/;
-const LARGE_BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
+// Admin product mutation routes (POST /api/products, PATCH /api/products/:id)
+// require a larger 10 MB body limit for base64-encoded image uploads. Those
+// routes apply the large parsers as inline middleware AFTER requireAdmin has
+// verified admin privileges. The global small parsers must skip those paths so
+// the body remains unparsed when it reaches the route-level large parsers.
+// All other routes use the 100 kb small parsers to prevent DoS via oversized
+// request bodies from unauthenticated or non-admin callers.
+const ADMIN_LARGE_BODY_PATHS = /^\/api\/products(\/\d+)?$/;
+const ADMIN_LARGE_BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
-const smallJsonParser = express.json({
-  limit: '100kb',
-  verify: (req: any, _res: any, buf: Buffer) => { req.rawBody = buf; },
-});
-const largeJsonParser = express.json({
-  limit: '10mb',
-  verify: (req: any, _res: any, buf: Buffer) => { req.rawBody = buf; },
-});
-const smallUrlencodedParser = express.urlencoded({ extended: false, limit: '100kb' });
-const largeUrlencodedParser = express.urlencoded({ extended: false, limit: '10mb' });
-
-// Reject callers with no valid session cookie on admin-only product routes
-// BEFORE any body parser runs. This prevents forged or absent session cookies
-// from triggering the 10 MB body parser.
-//
-// The check verifies the HMAC-SHA256 *signature* of the connect.sid cookie,
-// not just its presence. express-session signs cookies with SESSION_SECRET
-// using cookie-signature (HMAC-SHA256, base64 no-padding), producing the
-// format "s:{sessionId}.{hmac}". An attacker cannot forge a valid signature
-// without knowing the secret, so any unsigned or tampered cookie is rejected
-// here before a single byte of the body is buffered.
-//
-// Note: a valid signed cookie issued to a non-admin user will still pass this
-// pre-parser check, but requireAdmin in the route handler rejects it before
-// any business logic runs. The goal of this guard is strictly to prevent
-// unauthenticated/forged-cookie callers from causing 10 MB allocations.
-const SESSION_COOKIE_NAME = 'connect.sid';
-
-function hasValidSignedSessionCookie(cookieHeader: string): boolean {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) return false;
-  for (const part of cookieHeader.split(';')) {
-    const eqIdx = part.indexOf('=');
-    if (eqIdx === -1) continue;
-    const name = part.slice(0, eqIdx).trim();
-    if (name !== SESSION_COOKIE_NAME) continue;
-    const raw = part.slice(eqIdx + 1).trim();
-    try {
-      const decoded = decodeURIComponent(raw);
-      // Signed cookies from express-session are prefixed with "s:"
-      if (!decoded.startsWith('s:')) return false;
-      const signed = decoded.slice(2); // "{sessionId}.{hmac}"
-      const dotIdx = signed.lastIndexOf('.');
-      if (dotIdx === -1) return false;
-      const data = signed.slice(0, dotIdx);
-      const mac = signed.slice(dotIdx + 1);
-      // Reproduce the HMAC exactly as cookie-signature does
-      const expected = createHmac('sha256', secret)
-        .update(data)
-        .digest('base64')
-        .replace(/=+$/, '');
-      // Constant-time comparison to prevent timing oracle attacks
-      const eBuf = Buffer.from(expected);
-      const mBuf = Buffer.from(mac);
-      if (eBuf.length !== mBuf.length) return false;
-      return timingSafeEqual(eBuf, mBuf);
-    } catch {
-      return false;
-    }
-  }
-  return false;
+function isAdminProductMutation(req: Request): boolean {
+  return ADMIN_LARGE_BODY_PATHS.test(req.path) && ADMIN_LARGE_BODY_METHODS.has(req.method);
 }
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (!(LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method))) {
-    return next();
-  }
-  if (!hasValidSignedSessionCookie(req.headers.cookie || '')) {
-    return res.status(401).json({ message: "Não autenticado" });
-  }
-  next();
+  if (isAdminProductMutation(req)) return next();
+  return smallJsonParser(req, res, next);
 });
-
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const useLarge = LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method);
-  return (useLarge ? largeJsonParser : smallJsonParser)(req, res, next);
-});
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const useLarge = LARGE_BODY_PATHS.test(req.path) && LARGE_BODY_METHODS.has(req.method);
-  return (useLarge ? largeUrlencodedParser : smallUrlencodedParser)(req, res, next);
+  if (isAdminProductMutation(req)) return next();
+  return smallUrlencodedParser(req, res, next);
 });
 
 export function log(message: string, source = "express") {
