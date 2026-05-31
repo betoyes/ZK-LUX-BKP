@@ -75,9 +75,13 @@
 ## Current scan notes
 - Deterministic scans produced only low/medium candidates and required manual triage; no critical/high scanner finding was accepted without code validation.
 - Confirmed production-impact issues in the current code are concentrated in these areas:
-  - `POST /api/auth/login` accepts cross-site login requests without CSRF or Origin validation, allowing login CSRF / session swapping into an attacker-controlled account
-  - the global session + CSRF-token seeding middleware writes a fresh PostgreSQL-backed session for anonymous requests, allowing unauthenticated session-store exhaustion
+  - public authentication endpoints disclose whether an email address exists and whether it is already verified, enabling account enumeration
+  - unauthenticated PIX checkout creates pending local orders and sends admin sale notifications before settlement, enabling fake-order spam and business-metric pollution
+  - account anonymization frees the original email in `users` but LGPD aggregation still links `subscribers` / `customers` / `orders` by email, so a later account reusing that address can receive prior-user data
+  - public product variant media endpoints for `version1` / `version2` / `version3` miss the catalog limiter and can force repeated DB fetch + base64 decode work on large media blobs
 - Re-validated as fixed and not reproposed:
+  - `POST /api/auth/login` now enforces a valid CSRF token, so the prior login-CSRF / session-swapping issue was not reproduced
+  - `GET /api/auth/csrf-token` now returns a stateless token for anonymous callers without seeding PostgreSQL sessions, so the prior anonymous session-store exhaustion path was not reproduced
   - `POST /api/subscribers` now has a dedicated limiter, so the prior anonymous admin-email / quota abuse path is no longer present in the same form
   - logout destroys the server-side session and clears `connect.sid`, so stale guest payment authorization data is not inherited by later users of the same browser session
   - login regenerates the session before `req.logIn(...)`, addressing the prior session fixation concern
@@ -98,6 +102,7 @@
   - `?full=true` product responses because the underlying media is already public and the remaining concern is mainly performance/design intent rather than a strong confidentiality issue
   - missing startup validation for `ASAAS_WEBHOOK_TOKEN` because it is an operator-misconfiguration availability failure, not an external attacker exploit path
   - storing LGPD export payloads in `data_export_requests.downloadUrl` because it does not materially expand exposure beyond existing database access and was treated as privacy hardening rather than a distinct exploitable vulnerability
-  - `X-Forwarded-For` rate-limit bypass because this scan did not establish that client-supplied forwarded IPs survive the production proxy chain to the actual limiter key
+  - the raw `x-forwarded-for` helper used for audit/payment metadata, because this scan did not establish production evidence that attacker-supplied forwarded values survive the platform proxy chain in an exploitable way
   - anonymous subscriber `type` selection because it mainly pollutes business funnel data without crossing a meaningful security boundary
+  - limited email-address logging in `server/email.ts`, because it did not rise to the level of a distinct externally exploitable exposure after the broader API-response logging issue was fixed
   - credit-card response handling stores only Asaas last-four data rather than full PAN, so it was not treated as card-data exposure
