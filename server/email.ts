@@ -255,10 +255,10 @@ export async function sendOrderConfirmationEmail(params: {
       ? items.map((item: any) => `
           <tr>
             <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #2c2416; letter-spacing: 0.3px;">
-              ${item.name || item.productName || 'Produto'}
+              ${escapeHtml(item.name || item.productName || 'Produto')}
             </td>
             <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #2c2416; text-align: center;">
-              ${item.quantity || 1}
+              ${escapeHtml(String(item.quantity || 1))}
             </td>
             <td style="padding: 14px 0; border-bottom: 1px solid #e8e0d5; font-size: 14px; color: #8b6f3e; text-align: right; font-weight: 500;">
               ${item.price ? (item.price / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
@@ -312,7 +312,7 @@ export async function sendOrderConfirmationEmail(params: {
                         <span style="font-size: 22px; line-height: 56px; display: block; text-align: center;">✓</span>
                       </div>
                       <p style="margin: 0 0 6px; font-size: 11px; letter-spacing: 4px; color: #c9a96e; text-transform: uppercase; font-family: 'Helvetica Neue', Arial, sans-serif;">Pedido Confirmado</p>
-                      <h1 style="margin: 0 0 20px; font-size: 26px; font-weight: 400; color: #1a1208; letter-spacing: 1px;">Obrigada, ${customerName}.</h1>
+                      <h1 style="margin: 0 0 20px; font-size: 26px; font-weight: 400; color: #1a1208; letter-spacing: 1px;">Obrigada, ${escapeHtml(customerName)}.</h1>
                       <p style="margin: 0; font-size: 15px; color: #6b5a3e; line-height: 1.7; max-width: 380px; font-family: Georgia, serif;">
                         Seu pedido foi recebido e está sendo preparado com todo o cuidado do nosso atelier.
                       </p>

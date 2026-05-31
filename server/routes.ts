@@ -101,6 +101,16 @@ const changePasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const subscriberLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: process.env.NODE_ENV === 'development' ? 50 : 10,
+  message: {
+    message: "Muitas tentativas de inscrição. Tente novamente em 1 hora.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Helper to get client IP
 function getClientIp(req: Request): string | null {
   return (
@@ -825,18 +835,27 @@ export async function registerRoutes(
             }
           }
 
-          req.logIn(user, async (err) => {
-            if (err) {
-              return next(err);
+          req.session.regenerate((regenErr) => {
+            if (regenErr) {
+              return next(regenErr);
             }
 
-            // Log successful login
-            await logAuditEvent(user.id, "login", clientIp, userAgent);
+            // Assign a fresh CSRF token after session regeneration
+            (req.session as any).csrfToken = crypto.randomBytes(32).toString("hex");
 
-            return res.json({
-              id: user.id,
-              username: user.username,
-              role: user.role,
+            req.logIn(user, async (err) => {
+              if (err) {
+                return next(err);
+              }
+
+              // Log successful login
+              await logAuditEvent(user.id, "login", clientIp, userAgent);
+
+              return res.json({
+                id: user.id,
+                username: user.username,
+                role: user.role,
+              });
             });
           });
         },
@@ -1694,7 +1713,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/subscribers", async (req, res, next) => {
+  app.post("/api/subscribers", subscriberLimiter, async (req, res, next) => {
     try {
       // Add date and name defaults before validation
       const bodyWithDefaults = {
