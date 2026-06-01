@@ -154,7 +154,7 @@ export default function Checkout() {
         .then(r => r.ok ? r.json() : null)
         .then(profile => {
           if (profile) {
-            const nameParts = (profile.full_name || '').trim().split(/\s+/);
+            const nameParts = (profile.fullName || '').trim().split(/\s+/);
             const firstName = nameParts[0] || '';
             const lastName = nameParts.slice(1).join(' ') || '';
 

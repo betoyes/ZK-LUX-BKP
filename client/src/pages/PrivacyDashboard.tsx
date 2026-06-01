@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getCsrfToken } from '@/lib/csrf';
 
 interface ConsentData {
   consentMarketing: boolean;
@@ -97,9 +98,13 @@ export default function PrivacyDashboard() {
 
   const updateConsentMutation = useMutation({
     mutationFn: async (consents: Partial<ConsentData>) => {
+      const csrfToken = getCsrfToken();
       const res = await fetch('/api/lgpd/consent', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
         credentials: 'include',
         body: JSON.stringify(consents),
       });
@@ -125,8 +130,12 @@ export default function PrivacyDashboard() {
 
   const requestExportMutation = useMutation({
     mutationFn: async () => {
+      const csrfToken = getCsrfToken();
       const res = await fetch('/api/lgpd/data-export', {
         method: 'POST',
+        headers: {
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Falha ao solicitar exportação');
@@ -150,9 +159,13 @@ export default function PrivacyDashboard() {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async ({ password, mode }: { password: string; mode: 'anonymize' | 'delete' }) => {
+      const csrfToken = getCsrfToken();
       const res = await fetch('/api/lgpd/account', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
         credentials: 'include',
         body: JSON.stringify({ password, mode }),
       });

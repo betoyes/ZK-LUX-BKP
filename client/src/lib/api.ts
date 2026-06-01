@@ -1,14 +1,22 @@
 // API client for backend requests
-import { getCsrfToken } from './csrf';
+import { getCsrfToken, fetchCsrfToken } from './csrf';
 
 const API_BASE = '/api';
 
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
+// Detects the backend's CSRF rejection responses ("Token CSRF inválido…" and
+// "Sessão inválida…", both ending in "Atualize a página…") so a stale in-memory
+// token can be refreshed and the request replayed once.
+function isCsrfError(message: unknown): boolean {
+  return typeof message === 'string' && /csrf|atualize a p/i.test(message);
+}
+
 class APIClient {
   private async request<T>(
     endpoint: string,
-    options?: RequestInit
+    options?: RequestInit,
+    retried = false
   ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -31,6 +39,18 @@ class APIClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      // CSRF tokens drift out of sync (logout clears them, the stateless token
+      // expires after 2h, old tabs reuse a dead token). Refresh once and replay
+      // the same request a single time — `retried` prevents an infinite loop.
+      if (
+        response.status === 403 &&
+        !retried &&
+        UNSAFE_METHODS.includes(method) &&
+        isCsrfError(error?.message)
+      ) {
+        await fetchCsrfToken();
+        return this.request<T>(endpoint, options, true);
+      }
       const errorObj: any = new Error(error.message || `HTTP ${response.status}`);
       errorObj.needsVerification = error.needsVerification;
       errorObj.email = error.email;

@@ -49,6 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (username: string, password: string): Promise<User> => {
+    // Ensure a fresh CSRF token before logging in. The in-memory token can be
+    // stale (cleared on logout, expired after 2h, or reused by an old tab),
+    // which previously made login fail with "Token CSRF inválido" until the
+    // page was reloaded. api.request() also retries once on a 403 CSRF error.
+    await fetchCsrfToken();
     const data = await api.auth.login(username, password);
     const userData = data as User;
     setUser(userData);
