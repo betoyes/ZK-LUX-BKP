@@ -12,59 +12,73 @@ function escapeHtml(value: string | undefined | null): string {
 
 let connectionSettings: any;
 
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
+async function getConnectorCredentials(): Promise<{ apiKey: string | null; fromEmail: string | null }> {
+  try {
+    const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+    const xReplitToken = process.env.REPL_IDENTITY
+      ? 'repl ' + process.env.REPL_IDENTITY
+      : process.env.WEB_REPL_RENEWAL
+      ? 'depl ' + process.env.WEB_REPL_RENEWAL
+      : null;
 
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
+    if (!xReplitToken || !hostname) return { apiKey: null, fromEmail: null };
 
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
+    connectionSettings = await fetch(
+      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken,
+        },
       }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+    ).then(res => res.json()).then(data => data.items?.[0]);
 
-  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
-    throw new Error('Resend not connected');
+    return {
+      apiKey: connectionSettings?.settings?.api_key ?? null,
+      fromEmail: connectionSettings?.settings?.from_email ?? null,
+    };
+  } catch {
+    return { apiKey: null, fromEmail: null };
   }
-  return { apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email };
 }
 
 export async function getResendClient() {
-  const { apiKey, fromEmail } = await getCredentials();
+  // --- API key: env var takes priority, connector is fallback ---
+  const envApiKey = process.env.RESEND_API_KEY;
+  const connector = await getConnectorCredentials();
+  const apiKey = envApiKey || connector.apiKey;
 
-  // Use Resend's test email if the configured domain is not verified (gmail, hotmail, etc.)
-  const unverifiedDomains = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com'];
-  const emailDomain = fromEmail?.split('@')[1]?.toLowerCase();
-  const isUnverifiedDomain = emailDomain ? unverifiedDomains.includes(emailDomain) : true;
-
-  if (isUnverifiedDomain) {
-    console.warn(
-      `[Email] AVISO: O remetente configurado (${fromEmail ?? 'não definido'}) usa domínio não verificado no Resend.` +
-      ` Usando fallback onboarding@resend.dev.` +
-      ` ATENÇÃO: este endereço só pode enviar para o e-mail do proprietário da conta Resend — e-mails para outros destinatários serão rejeitados.` +
-      ` Para corrigir: adicione e verifique um domínio próprio no painel do Resend e atualize o campo "from_email" no conector.`
-    );
+  if (!apiKey) {
+    throw new Error('[Email] RESEND_API_KEY não encontrada. Defina a secret RESEND_API_KEY no Replit.');
   }
 
-  const safeFromEmail = isUnverifiedDomain
-    ? 'ZK REZK <onboarding@resend.dev>'
-    : fromEmail || 'ZK REZK <onboarding@resend.dev>';
+  // --- From address: RESEND_FROM_EMAIL > connector > warn + fallback ---
+  const envFromEmail = process.env.RESEND_FROM_EMAIL?.trim();
+  const connectorFromEmail = connector.fromEmail?.trim() || null;
 
-  return {
-    client: new Resend(apiKey),
-    fromEmail: safeFromEmail
-  };
+  if (envFromEmail) {
+    console.log(`[Email] Remetente: RESEND_FROM_EMAIL=${envFromEmail}`);
+    return { client: new Resend(apiKey), fromEmail: envFromEmail };
+  }
+
+  // Connector from_email present — check if domain is verified
+  const unverifiedDomains = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com'];
+  const connectorDomain = connectorFromEmail?.split('@')[1]?.toLowerCase();
+  const isUnverified = connectorDomain ? unverifiedDomains.includes(connectorDomain) : true;
+
+  if (!isUnverified && connectorFromEmail) {
+    console.log(`[Email] Remetente: conector Resend from_email=${connectorFromEmail}`);
+    return { client: new Resend(apiKey), fromEmail: connectorFromEmail };
+  }
+
+  // Last resort: onboarding@resend.dev — works only for account owner's email
+  console.warn(
+    `[Email] AVISO: RESEND_FROM_EMAIL não definida e o conector retornou domínio não verificado` +
+    ` (${connectorFromEmail ?? 'não definido'}).` +
+    ` Usando fallback onboarding@resend.dev — SOMENTE envia para o e-mail do dono da conta Resend.` +
+    ` Para corrigir: crie a secret RESEND_FROM_EMAIL=noreply@zkrezk.com no Replit.`
+  );
+  return { client: new Resend(apiKey), fromEmail: 'ZK REZK <onboarding@resend.dev>' };
 }
 
 export async function sendVerificationEmail(to: string, token: string, baseUrl: string) {
