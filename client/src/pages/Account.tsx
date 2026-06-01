@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Package, Heart, LogOut, User, Shield, Loader2, Save, CheckCircle2, MailWarning } from 'lucide-react';
+import { Package, Heart, LogOut, User, Shield, Loader2, Save, CheckCircle2, MailWarning, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
@@ -236,8 +236,17 @@ export default function Account() {
                >
                  Lista de Desejos
                </button>
+               <Link href="/cart">
+                 <button
+                   className="text-left px-4 py-3 font-mono text-xs uppercase tracking-widest border-l-2 transition-all border-transparent hover:bg-secondary/30 flex items-center gap-2 w-full"
+                   data-testid="link-cart"
+                 >
+                   <ShoppingBag className="h-3 w-3" />
+                   Minha Sacola
+                 </button>
+               </Link>
                <Link href="/privacy">
-                 <button 
+                 <button
                    className="text-left px-4 py-3 font-mono text-xs uppercase tracking-widest border-l-2 transition-all border-transparent hover:bg-secondary/30 flex items-center gap-2 w-full"
                    data-testid="link-privacy"
                  >
