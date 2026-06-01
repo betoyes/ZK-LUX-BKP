@@ -68,7 +68,9 @@ function formatRequestDate(value?: string | null): string {
 }
 
 interface UserData {
-  user: {
+  // The /api/lgpd/data endpoint returns the account info under `profile`
+  // (not `user`); reading `userData.user` left "Data de Criação" as N/A.
+  profile: {
     id: number;
     username: string;
     role: string;
@@ -526,20 +528,20 @@ export default function PrivacyDashboard() {
                           <Label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                             Email
                           </Label>
-                          <p className="text-lg" data-testid="text-user-email">{userData?.user?.username || user?.username}</p>
+                          <p className="text-lg" data-testid="text-user-email">{userData?.profile?.username || user?.username}</p>
                         </div>
                         <div>
                           <Label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                             ID do Usuário
                           </Label>
-                          <p className="text-lg" data-testid="text-user-id">{userData?.user?.id || user?.id}</p>
+                          <p className="text-lg" data-testid="text-user-id">{userData?.profile?.id || user?.id}</p>
                         </div>
                         <div>
                           <Label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                             Email Verificado
                           </Label>
                           <p className="text-lg" data-testid="text-email-verified">
-                            {userData?.user?.emailVerified ? 'Sim' : 'Não'}
+                            {userData?.profile?.emailVerified ? 'Sim' : 'Não'}
                           </p>
                         </div>
                         <div>
@@ -547,9 +549,14 @@ export default function PrivacyDashboard() {
                             Data de Criação
                           </Label>
                           <p className="text-lg" data-testid="text-created-at">
-                            {userData?.user?.createdAt 
-                              ? new Date(userData.user.createdAt).toLocaleDateString('pt-BR')
-                              : 'N/A'}
+                            {(() => {
+                              const raw = userData?.profile?.createdAt;
+                              if (!raw) return 'Data não disponível';
+                              const d = new Date(raw);
+                              return isNaN(d.getTime())
+                                ? 'Data não disponível'
+                                : d.toLocaleDateString('pt-BR');
+                            })()}
                           </p>
                         </div>
                       </div>
