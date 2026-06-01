@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProducts } from '@/context/ProductContext';
+import { useAuth } from '@/context/AuthContext';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,6 +15,7 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useLocation();
   const { wishlist, branding, getCartCount } = useProducts();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   
   // Handle scroll effect
   useEffect(() => {
@@ -97,9 +99,9 @@ export function Navbar() {
                 </button>
               </Link>
 
-              <Link href="/login">
+              <Link href={!authLoading && isAuthenticated ? '/account' : '/login'}>
                 <button className="hover:opacity-70 transition-opacity font-mono text-sm flex items-center gap-2">
-                  LOGIN
+                  {!authLoading && isAuthenticated ? 'MINHA CONTA' : 'LOGIN'}
                 </button>
               </Link>
               
