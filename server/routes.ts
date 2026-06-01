@@ -956,22 +956,34 @@ export async function registerRoutes(
               return next(regenErr);
             }
 
-            // Assign a fresh CSRF token after session regeneration
-            (req.session as any).csrfToken = crypto.randomBytes(32).toString("hex");
-
             req.logIn(user, async (err) => {
               if (err) {
                 return next(err);
               }
 
+              // Passport 0.7's req.logIn() regenerates the session internally
+              // (session-fixation hardening), which discards any property set on
+              // the pre-login session. The CSRF token MUST therefore be assigned
+              // AFTER req.logIn() completes — otherwise req.session.csrfToken is
+              // lost and every later CSRF-protected request (notably logout)
+              // fails with 403. Persist it explicitly so the regenerated session
+              // row carries the token before the response is sent.
+              (req.session as any).csrfToken = crypto.randomBytes(32).toString("hex");
+
               // Log successful login
               await logAuditEvent(user.id, "login", clientIp, userAgent);
 
-              return res.json({
-                id: user.id,
-                username: user.username,
-                role: user.role,
-                emailVerified: user.emailVerified ?? false,
+              req.session.save((saveErr) => {
+                if (saveErr) {
+                  return next(saveErr);
+                }
+
+                return res.json({
+                  id: user.id,
+                  username: user.username,
+                  role: user.role,
+                  emailVerified: user.emailVerified ?? false,
+                });
               });
             });
           });
