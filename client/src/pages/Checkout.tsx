@@ -138,9 +138,11 @@ export default function Checkout() {
   const [installments, setInstallments] = useState(1);
   const { toast } = useToast();
   const { cart, products, clearCart } = useProducts();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -278,11 +280,42 @@ export default function Checkout() {
     onChange(masked);
   };
 
+  const handleResendVerification = async () => {
+    const email = user?.username || customerData?.email || customerForm.getValues('email');
+    if (!email || resendingVerification) return;
+    setResendingVerification(true);
+    try {
+      await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+        credentials: 'include',
+      });
+      toast({ title: "Email enviado", description: "Verifique sua caixa de entrada para confirmar seu email." });
+    } catch {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível reenviar o email." });
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
   async function onCustomerSubmit(values: CustomerData) {
     if (!shipping) {
       toast({
         title: "CEP inválido",
         description: "Por favor, informe um CEP válido para calcular o frete.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Bloqueia o avanço para Pagamento Seguro se o e-mail ainda não foi confirmado.
+    // O carrinho e o preenchimento do checkout continuam liberados — apenas o pagamento é bloqueado.
+    if (user && user.emailVerified === false) {
+      setEmailNotVerified(true);
+      toast({
+        title: "Confirme seu e-mail",
+        description: "Confirme seu e-mail antes de finalizar a compra. Enviamos um link de confirmação para o seu endereço de e-mail.",
         variant: "destructive",
       });
       return;
@@ -1151,8 +1184,28 @@ export default function Checkout() {
                   )}
                 </div>
 
-                <Button 
-                  type="submit" 
+                {emailNotVerified && (
+                  <div className="mt-8 border border-amber-300 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3" data-testid="checkout-email-verification-warning">
+                    <div className="flex-1">
+                      <p className="font-mono text-xs uppercase tracking-widest text-amber-800 mb-1">Confirme seu e-mail</p>
+                      <p className="text-sm text-amber-700">
+                        Confirme seu e-mail antes de finalizar a compra. Enviamos um link de confirmação para o seu endereço de e-mail.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendingVerification}
+                      className="font-mono text-xs uppercase tracking-widest text-amber-800 border border-amber-400 px-3 py-2 hover:bg-amber-100 transition-colors whitespace-nowrap disabled:opacity-50"
+                      data-testid="button-checkout-resend-verification"
+                    >
+                      {resendingVerification ? 'Enviando...' : 'Reenviar confirmação'}
+                    </button>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
                   className="w-full rounded-none h-12 bg-black text-white hover:bg-primary uppercase tracking-widest mt-8"
                   disabled={!paymentConfig?.configured}
                   data-testid="button-continue-payment"
