@@ -42,14 +42,25 @@ async function getCredentials() {
 
 export async function getResendClient() {
   const { apiKey, fromEmail } = await getCredentials();
-  
+
   // Use Resend's test email if the configured domain is not verified (gmail, hotmail, etc.)
   const unverifiedDomains = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com'];
   const emailDomain = fromEmail?.split('@')[1]?.toLowerCase();
-  const safeFromEmail = emailDomain && unverifiedDomains.includes(emailDomain)
+  const isUnverifiedDomain = emailDomain ? unverifiedDomains.includes(emailDomain) : true;
+
+  if (isUnverifiedDomain) {
+    console.warn(
+      `[Email] AVISO: O remetente configurado (${fromEmail ?? 'não definido'}) usa domínio não verificado no Resend.` +
+      ` Usando fallback onboarding@resend.dev.` +
+      ` ATENÇÃO: este endereço só pode enviar para o e-mail do proprietário da conta Resend — e-mails para outros destinatários serão rejeitados.` +
+      ` Para corrigir: adicione e verifique um domínio próprio no painel do Resend e atualize o campo "from_email" no conector.`
+    );
+  }
+
+  const safeFromEmail = isUnverifiedDomain
     ? 'ZK REZK <onboarding@resend.dev>'
     : fromEmail || 'ZK REZK <onboarding@resend.dev>';
-  
+
   return {
     client: new Resend(apiKey),
     fromEmail: safeFromEmail
@@ -64,10 +75,10 @@ export async function sendVerificationEmail(to: string, token: string, baseUrl: 
     const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
     
     const result = await client.emails.send({
-    from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
-    to: [to],
-    subject: 'Verifique seu email - ZK REZK',
-    html: `
+      from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
+      to: [to],
+      subject: 'Verifique seu email - ZK REZK',
+      html: `
       <!DOCTYPE html>
       <html>
         <head>
@@ -104,10 +115,16 @@ export async function sendVerificationEmail(to: string, token: string, baseUrl: 
       </html>
     `
     });
-    console.log(`[Email] Verification email sent successfully to ${to}`, result);
+
+    if (result.error) {
+      console.error(`[Email] Resend rejeitou o envio para ${to}:`, result.error);
+      throw new Error(`Resend API error [${result.error.name}]: ${result.error.message}`);
+    }
+
+    console.log(`[Email] E-mail de verificação enviado com sucesso para ${to}`, { id: result.data?.id });
     return result;
   } catch (error) {
-    console.error(`[Email] Failed to send verification email to ${to}:`, error);
+    console.error(`[Email] Falha ao enviar e-mail de verificação para ${to}:`, error);
     throw error;
   }
 }
@@ -179,7 +196,7 @@ export async function sendAdminNotification(
         break;
     }
     
-    const result = await client.emails.send({
+    const adminResult = await client.emails.send({
       from: fromEmail || 'ZK REZK <onboarding@resend.dev>',
       to: [adminEmail],
       subject,
@@ -224,11 +241,17 @@ export async function sendAdminNotification(
         </html>
       `
     });
-    
-    console.log(`[Email] Admin notification sent for ${type}:`, result);
-    return result;
+
+    if (adminResult.error) {
+      console.error(`[Email] Resend rejeitou notificação admin (${type}):`, adminResult.error);
+      // Notificações admin falham silenciosamente — não lança
+      return;
+    }
+
+    console.log(`[Email] Notificação admin enviada (${type}):`, { id: adminResult.data?.id });
+    return adminResult;
   } catch (error) {
-    console.error(`[Email] Failed to send admin notification for ${type}:`, error);
+    console.error(`[Email] Falha ao enviar notificação admin (${type}):`, error);
     // Don't throw - notifications should fail silently
   }
 }
@@ -410,22 +433,30 @@ export async function sendOrderConfirmationEmail(params: {
   </html>`,
     });
 
-    console.log(`[Email] Order confirmation sent to ${customerEmail} for order ${orderId}`, result);
+    if (result.error) {
+      console.error(`[Email] Resend rejeitou confirmação de pedido para ${customerEmail}:`, result.error);
+      throw new Error(`Resend API error [${result.error.name}]: ${result.error.message}`);
+    }
+
+    console.log(`[Email] Confirmação de pedido ${orderId} enviada para ${customerEmail}`, { id: result.data?.id });
     return result;
   } catch (error) {
-    console.error(`[Email] Failed to send order confirmation to ${customerEmail}:`, error);
+    console.error(`[Email] Falha ao enviar confirmação de pedido para ${customerEmail}:`, error);
   }
 }
 
 export async function sendPasswordResetEmail(to: string, token: string, baseUrl: string) {
-  const { client, fromEmail } = await getResendClient();
-  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-  
-  await client.emails.send({
-    from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
-    to: [to],
-    subject: 'Recuperação de senha - ZK REZK',
-    html: `
+  console.log(`[Email] Tentando enviar e-mail de recuperação de senha para ${to}`);
+  try {
+    const { client, fromEmail } = await getResendClient();
+    console.log(`[Email] Resend client obtido, remetente: ${fromEmail}`);
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+    const result = await client.emails.send({
+      from: fromEmail || 'ZK REZK <noreply@zkrezk.com>',
+      to: [to],
+      subject: 'Recuperação de senha - ZK REZK',
+      html: `
       <!DOCTYPE html>
       <html>
         <head>
@@ -464,5 +495,17 @@ export async function sendPasswordResetEmail(to: string, token: string, baseUrl:
         </body>
       </html>
     `
-  });
+    });
+
+    if (result.error) {
+      console.error(`[Email] Resend rejeitou e-mail de recuperação para ${to}:`, result.error);
+      throw new Error(`Resend API error [${result.error.name}]: ${result.error.message}`);
+    }
+
+    console.log(`[Email] E-mail de recuperação de senha enviado com sucesso para ${to}`, { id: result.data?.id });
+    return result;
+  } catch (error) {
+    console.error(`[Email] Falha ao enviar e-mail de recuperação de senha para ${to}:`, error);
+    throw error;
+  }
 }

@@ -546,9 +546,11 @@ export async function registerRoutes(
         });
 
         const baseUrl = getTrustedBaseUrl(req);
+        let verificationEmailSent = true;
         try {
           await sendVerificationEmail(email, verificationToken, baseUrl);
         } catch (emailErr: any) {
+          verificationEmailSent = false;
           console.error("Failed to send verification email:", emailErr);
           sendAdminNotification('email_failure', {
             email,
@@ -560,8 +562,9 @@ export async function registerRoutes(
         }
 
         res.status(201).json({
-          message:
-            "Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.",
+          message: verificationEmailSent
+            ? "Cadastro realizado com sucesso! Verifique seu email para ativar sua conta."
+            : "Conta criada com sucesso, mas houve um problema técnico ao enviar o email de confirmação. Use a opção \"Reenviar confirmação\" na tela de login ou entre em contato com o suporte.",
         });
       } catch (err) {
         next(err);
@@ -682,6 +685,7 @@ export async function registerRoutes(
 
         // Send verification email
         const baseUrl = getTrustedBaseUrl(req);
+        let resendEmailSent = true;
         try {
           await sendVerificationEmail(
             user.email || email,
@@ -689,6 +693,7 @@ export async function registerRoutes(
             baseUrl,
           );
         } catch (emailErr: any) {
+          resendEmailSent = false;
           console.error("Failed to send verification email:", emailErr);
           sendAdminNotification('email_failure', {
             email: user.email || email,
@@ -708,8 +713,9 @@ export async function registerRoutes(
         );
 
         res.json({
-          message:
-            "Se o email existir em nossa base, você receberá um novo link de verificação.",
+          message: resendEmailSent
+            ? "Se o email existir em nossa base, você receberá um novo link de verificação."
+            : "Houve um problema técnico ao enviar o email. Tente novamente em alguns minutos ou entre em contato com o suporte.",
         });
       } catch (err) {
         next(err);
@@ -770,8 +776,19 @@ export async function registerRoutes(
         const baseUrl = getTrustedBaseUrl(req);
         try {
           await sendPasswordResetEmail(email, resetToken, baseUrl);
-        } catch (emailErr) {
-          console.error("Failed to send password reset email:", emailErr);
+        } catch (emailErr: any) {
+          // Resposta é sempre genérica (anti-enumeração), mas logamos o erro real
+          console.error(
+            `[Auth] Falha ao enviar e-mail de recuperação de senha para ${email}:`,
+            emailErr?.message || emailErr,
+          );
+          sendAdminNotification('email_failure', {
+            email,
+            reason: 'password_reset_email_failed',
+            error: emailErr?.message || 'Unknown error',
+          }).catch((notifErr) =>
+            console.error("Failed to send admin notification for password reset failure:", notifErr),
+          );
         }
 
         res.json({
