@@ -18,7 +18,7 @@ import {
   DialogTrigger,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, ArrowRight, Ruler, Gem, LogIn, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, ArrowRight, Ruler, Gem, LogIn, UserPlus, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import StoneSelector, { hasStoneVariations, getStonePrice, getStoneOptions, getStoneLabel } from '@/components/StoneSelector';
 
@@ -28,7 +28,7 @@ export default function Product() {
   const urlParams = new URLSearchParams(searchString);
   const stoneFromUrl = urlParams.get('stone');
   
-  const { products, categories, collections, addToCart } = useProducts();
+  const { products, categories, collections, addToCart, wishlist, toggleWishlist } = useProducts();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [mainImage, setMainImage] = useState('');
@@ -210,10 +210,18 @@ export default function Product() {
           {/* Product Image - Sticky on Desktop */}
           <div className="relative">
              <div className="sticky top-32 space-y-4">
-               <div className="aspect-square bg-secondary overflow-hidden max-h-[55vh] lg:max-h-[58vh]">
-                 <img 
-                  src={mainImage || product.image || product.imageColor} 
-                  alt={product.name} 
+               <div className="relative aspect-square bg-secondary overflow-hidden max-h-[55vh] lg:max-h-[58vh]">
+                 <button
+                   onClick={() => toggleWishlist(product.id)}
+                   aria-label={wishlist.includes(product.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                   data-testid="button-wishlist-product"
+                   className={`absolute top-4 right-4 z-20 p-2 transition-colors rounded-none ${wishlist.includes(product.id) ? 'bg-black text-white' : 'bg-white/80 backdrop-blur-sm hover:bg-black hover:text-white'}`}
+                 >
+                   <Heart className={`h-4 w-4 ${wishlist.includes(product.id) ? 'fill-white' : 'fill-none'}`} />
+                 </button>
+                 <img
+                  src={mainImage || product.image || product.imageColor}
+                  alt={product.name}
                   loading="lazy"
                   className="w-full h-full object-cover transition-opacity duration-300"
                 />
