@@ -52,8 +52,19 @@ interface ConsentState {
 interface DataExportRequest {
   id: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  createdAt: string;
+  requestedAt: string;
+  completedAt?: string | null;
   downloadUrl?: string;
+}
+
+// Formats an API date string for display, avoiding "Invalid Date" when the
+// value is missing or unparseable.
+function formatRequestDate(value?: string | null): string {
+  if (!value) return 'Data não disponível';
+  const date = new Date(value);
+  return isNaN(date.getTime())
+    ? 'Data não disponível'
+    : date.toLocaleString('pt-BR');
 }
 
 interface UserData {
@@ -459,7 +470,7 @@ export default function PrivacyDashboard() {
                                       Solicitação #{request.id}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      {new Date(request.createdAt).toLocaleString('pt-BR')}
+                                      {formatRequestDate(request.requestedAt)}
                                     </p>
                                   </div>
                                 </div>
