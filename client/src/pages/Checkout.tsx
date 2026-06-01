@@ -692,7 +692,7 @@ export default function Checkout() {
                   >
                     <CreditCard className="h-8 w-8 mx-auto mb-2" />
                     <span className="font-medium">Cartão de Crédito</span>
-                    <p className="text-xs text-muted-foreground mt-1">Até 12x sem juros</p>
+                    <p className="text-xs text-muted-foreground mt-1">Parcelamento disponível</p>
                   </button>
                 </div>
               </div>
