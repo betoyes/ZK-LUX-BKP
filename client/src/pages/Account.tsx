@@ -253,7 +253,7 @@ export default function Account() {
                  className={`text-left px-4 py-3 font-mono text-xs uppercase tracking-widest border-l-2 transition-all ${activeTab === "wishlist" ? "border-black bg-secondary/50" : "border-transparent hover:bg-secondary/30"}`}
                  data-testid="tab-wishlist"
                >
-                 Lista de Desejos
+                 WISHLIST
                </button>
                <Link href="/cart">
                  <button
@@ -461,10 +461,10 @@ export default function Account() {
 
               {activeTab === "wishlist" && (
                 <div className="space-y-8">
-                  <h2 className="font-display text-3xl mb-6">Lista de Desejos</h2>
+                  <h2 className="font-display text-3xl mb-6">WISHLIST</h2>
                   {wishlistProducts.length === 0 ? (
                     <>
-                      <p className="font-mono text-sm text-muted-foreground">Sua lista de desejos está vazia.</p>
+                      <p className="font-mono text-sm text-muted-foreground">Sua WISHLIST está vazia.</p>
                       <Link href="/shop">
                         <Button className="rounded-none bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs px-8">
                           Explorar Coleção
