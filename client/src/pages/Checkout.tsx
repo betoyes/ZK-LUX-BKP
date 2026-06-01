@@ -649,6 +649,11 @@ export default function Checkout() {
   }
 
   if (step === 'payment') {
+    const baseTotal = subtotal + (shipping?.price || 0);
+    const hasInterest = paymentMethod === 'credit_card' && installments > 1;
+    const displayTotal = hasInterest
+      ? calculateInstallmentWithInterest(baseTotal, installments).totalWithInterest
+      : baseTotal;
     return (
       <div className="min-h-screen bg-background pt-32 pb-24">
         <div className="container mx-auto px-4 max-w-4xl">
@@ -830,7 +835,7 @@ export default function Checkout() {
                           Processando...
                         </>
                       ) : (
-                        `Pagar ${formatCurrency(subtotal + (shipping?.price || 0))}`
+                        `Pagar ${formatCurrency(displayTotal)}`
                       )}
                     </Button>
                   </form>
@@ -895,9 +900,15 @@ export default function Checkout() {
                 </div>
 
                 <div className="flex justify-between font-medium text-lg">
-                  <span>Total</span>
-                  <span data-testid="text-total">{formatCurrency(subtotal + (shipping?.price || 0))}</span>
+                  <span>Total{hasInterest ? ' com juros' : ''}</span>
+                  <span data-testid="text-total">{formatCurrency(displayTotal)}</span>
                 </div>
+
+                {hasInterest && (
+                  <p className="text-xs text-muted-foreground mt-2" data-testid="text-total-interest-note">
+                    Inclui juros do parcelamento em {installments}x de {formatCurrency(calculateInstallmentWithInterest(baseTotal, installments).installmentValue)}
+                  </p>
+                )}
 
                 {shipping && (
                   <p className="text-xs text-muted-foreground mt-4" data-testid="text-delivery-estimate">
