@@ -57,6 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Refresh the CSRF token from the current session right before logging out.
+    // The in-memory token captured at login time can drift out of sync with
+    // req.session.csrfToken (e.g. across navigation/reloads), and csrfProtection
+    // on POST /api/auth/logout rejects a stale token with 403 — which left the
+    // user logged in with "Não foi possível desconectar". Fetching it here
+    // guarantees the x-csrf-token header matches the session token.
+    await fetchCsrfToken();
     await api.auth.logout();
     clearCsrfToken();
     setUser(null);
