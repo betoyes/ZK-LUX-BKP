@@ -242,7 +242,7 @@ export default function Account() {
                    data-testid="link-cart"
                  >
                    <ShoppingBag className="h-3 w-3" />
-                   Minha Sacola
+                   MY BAG
                  </button>
                </Link>
                <Link href="/privacy">
