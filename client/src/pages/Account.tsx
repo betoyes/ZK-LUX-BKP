@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { Package, Heart, LogOut, User, Shield, Loader2, Save, CheckCircle2, MailWarning, ShoppingBag } from 'lucide-react';
+import { Package, Heart, LogOut, User, Shield, Loader2, Save, CheckCircle2, MailWarning, ShoppingBag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
+import { useProducts } from '@/context/ProductContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCsrfToken } from '@/lib/csrf';
@@ -44,9 +45,27 @@ function maskCep(value: string): string {
 export default function Account() {
   const [activeTab, setActiveTab] = useState("orders");
   const { user, logout, isLoading, isAuthenticated } = useAuth();
+  const { products, collections, wishlist, toggleWishlist } = useProducts();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const wishlistProducts = (Array.isArray(products) ? products : []).filter(p => wishlist.includes(p.id));
+
+  // Reuse the same toggleWishlist used by the heart button in the shop. Since
+  // these items are already favorited, toggling removes them; the in-memory
+  // wishlist state updates reactively so the list re-renders without a reload.
+  const handleRemoveWishlist = (productId: number) => {
+    try {
+      toggleWishlist(productId);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível remover o produto. Tente novamente.",
+      });
+    }
+  };
 
   const [resendingVerification, setResendingVerification] = useState(false);
 
@@ -443,12 +462,62 @@ export default function Account() {
               {activeTab === "wishlist" && (
                 <div className="space-y-8">
                   <h2 className="font-display text-3xl mb-6">Lista de Desejos</h2>
-                  <p className="font-mono text-sm text-muted-foreground">Sua lista de desejos está vazia.</p>
-                  <Link href="/shop">
-                    <Button className="rounded-none bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs px-8">
-                      Explorar Coleção
-                    </Button>
-                  </Link>
+                  {wishlistProducts.length === 0 ? (
+                    <>
+                      <p className="font-mono text-sm text-muted-foreground">Sua lista de desejos está vazia.</p>
+                      <Link href="/shop">
+                        <Button className="rounded-none bg-black text-white hover:bg-primary uppercase tracking-widest font-mono text-xs px-8">
+                          Explorar Coleção
+                        </Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <div className="border-t border-border">
+                      <AnimatePresence initial={false}>
+                        {wishlistProducts.map((product) => (
+                          <motion.div
+                            key={product.id}
+                            layout
+                            exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+                            className="flex items-center gap-6 py-6 border-b border-border"
+                            data-testid={`wishlist-item-${product.id}`}
+                          >
+                            <Link href={`/product/${product.id}`} className="shrink-0">
+                              <div className="w-20 h-24 bg-secondary overflow-hidden">
+                                <img
+                                  src={product.image}
+                                  alt={product.name}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500"
+                                />
+                              </div>
+                            </Link>
+                            <div className="flex-1 min-w-0">
+                              <Link href={`/product/${product.id}`}>
+                                <h3 className="font-display text-xl leading-none mb-2 hover:underline underline-offset-4 decoration-1 truncate">
+                                  {product.name}
+                                </h3>
+                              </Link>
+                              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+                                {collections.find(c => c.id === product.collectionId)?.name || ''}
+                              </span>
+                              <p className="font-mono text-sm mt-2">
+                                R$ {(product.price / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveWishlist(product.id)}
+                              className="shrink-0 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-black transition-colors flex items-center gap-2"
+                              data-testid={`button-remove-wishlist-${product.id}`}
+                            >
+                              <X className="h-3 w-3" />
+                              Remover
+                            </button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
