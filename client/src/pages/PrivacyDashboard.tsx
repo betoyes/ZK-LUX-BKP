@@ -34,10 +34,19 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getCsrfToken } from '@/lib/csrf';
 
+// Body shape sent to PATCH /api/lgpd/consent (backend expects these keys).
 interface ConsentData {
   consentMarketing: boolean;
   consentTerms: boolean;
   consentPrivacy: boolean;
+}
+
+// Shape returned by GET /api/lgpd/data under `consents` (different key names).
+interface ConsentState {
+  marketing: boolean;
+  terms: boolean;
+  privacy: boolean;
+  consentAt?: string | null;
 }
 
 interface DataExportRequest {
@@ -55,7 +64,7 @@ interface UserData {
     emailVerified: boolean;
     createdAt: string;
   };
-  consents: ConsentData;
+  consents: ConsentState;
   orders: any[];
   dataExportRequests: DataExportRequest[];
 }
@@ -111,7 +120,28 @@ export default function PrivacyDashboard() {
       if (!res.ok) throw new Error('Falha ao atualizar consentimento');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Reflect the server-confirmed values immediately so the switches show
+      // the new on/off state without waiting for the refetch. This uses the
+      // authoritative PATCH response (not an optimistic guess), then we still
+      // invalidate to keep everything in sync with the backend.
+      const updated = data?.consentData;
+      if (updated) {
+        queryClient.setQueryData<UserData>(['lgpd-data'], (prev) =>
+          prev
+            ? {
+                ...prev,
+                consents: {
+                  ...prev.consents,
+                  marketing: updated.consentMarketing,
+                  terms: updated.consentTerms,
+                  privacy: updated.consentPrivacy,
+                  consentAt: updated.consentAt,
+                },
+              }
+            : prev,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['lgpd-data'] });
       queryClient.invalidateQueries({ queryKey: ['consent-history'] });
       toast({
@@ -297,7 +327,7 @@ export default function PrivacyDashboard() {
                             </CardDescription>
                           </div>
                           <Switch
-                            checked={userData?.consents?.consentMarketing ?? false}
+                            checked={userData?.consents?.marketing ?? false}
                             onCheckedChange={(checked) => handleConsentChange('consentMarketing', checked)}
                             disabled={updateConsentMutation.isPending}
                             data-testid="switch-marketing"
@@ -316,7 +346,7 @@ export default function PrivacyDashboard() {
                             </CardDescription>
                           </div>
                           <Switch
-                            checked={userData?.consents?.consentTerms ?? false}
+                            checked={userData?.consents?.terms ?? false}
                             onCheckedChange={(checked) => handleConsentChange('consentTerms', checked)}
                             disabled={updateConsentMutation.isPending}
                             data-testid="switch-terms"
@@ -335,7 +365,7 @@ export default function PrivacyDashboard() {
                             </CardDescription>
                           </div>
                           <Switch
-                            checked={userData?.consents?.consentPrivacy ?? false}
+                            checked={userData?.consents?.privacy ?? false}
                             onCheckedChange={(checked) => handleConsentChange('consentPrivacy', checked)}
                             disabled={updateConsentMutation.isPending}
                             data-testid="switch-privacy"
@@ -522,20 +552,20 @@ export default function PrivacyDashboard() {
                     <CardContent className="space-y-3">
                       <div className="flex justify-between items-center py-2 border-b border-border">
                         <span>Marketing</span>
-                        <span className={userData?.consents?.consentMarketing ? 'text-green-600' : 'text-red-600'}>
-                          {userData?.consents?.consentMarketing ? 'Aceito' : 'Recusado'}
+                        <span className={userData?.consents?.marketing ? 'text-green-600' : 'text-red-600'}>
+                          {userData?.consents?.marketing ? 'Aceito' : 'Recusado'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-border">
                         <span>Termos de Uso</span>
-                        <span className={userData?.consents?.consentTerms ? 'text-green-600' : 'text-red-600'}>
-                          {userData?.consents?.consentTerms ? 'Aceito' : 'Recusado'}
+                        <span className={userData?.consents?.terms ? 'text-green-600' : 'text-red-600'}>
+                          {userData?.consents?.terms ? 'Aceito' : 'Recusado'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center py-2">
                         <span>Política de Privacidade</span>
-                        <span className={userData?.consents?.consentPrivacy ? 'text-green-600' : 'text-red-600'}>
-                          {userData?.consents?.consentPrivacy ? 'Aceito' : 'Recusado'}
+                        <span className={userData?.consents?.privacy ? 'text-green-600' : 'text-red-600'}>
+                          {userData?.consents?.privacy ? 'Aceito' : 'Recusado'}
                         </span>
                       </div>
                     </CardContent>
