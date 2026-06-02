@@ -506,20 +506,15 @@ export default function Product() {
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="shipping" className="border-b border-border">
                   <AccordionTrigger className="font-mono text-xs uppercase tracking-widest py-6 hover:no-underline">
-                    Envio e Devoluções
+                    Produção e Envio
                   </AccordionTrigger>
                   <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
                     <p>
                       Oferecemos envio expresso para todo o Brasil com rastreamento completo.
                       Produção sob medida após a confirmação do pedido.
                     </p>
-                    <p>
-                      Aceitamos devoluções em até 14 dias após a entrega, desde que a peça esteja 
-                      na embalagem original e em perfeitas condições. O reembolso é processado
-                      após recebermos o produto.
-                    </p>
-                    <a 
-                      href="https://wa.me/5511999999999?text=Olá! Tenho uma dúvida sobre envio ou devolução."
+                    <a
+                      href="https://wa.me/5511999999999?text=Olá! Tenho uma dúvida sobre envio."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-foreground font-medium hover:underline underline-offset-4"
