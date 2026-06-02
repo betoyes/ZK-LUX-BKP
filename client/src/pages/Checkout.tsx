@@ -912,7 +912,7 @@ export default function Checkout() {
 
                 {shipping && (
                   <p className="text-xs text-muted-foreground mt-4" data-testid="text-delivery-estimate">
-                    Entrega estimada: {shipping.daysMin}-{shipping.daysMax} dias úteis
+                    Produção sob medida após confirmação do pedido
                   </p>
                 )}
               </div>
@@ -1188,7 +1188,7 @@ export default function Checkout() {
                           Frete: {formatCurrency(shipping.price)}
                         </p>
                         <p className="text-sm text-green-700" data-testid="text-shipping-days">
-                          Entrega em {shipping.daysMin}-{shipping.daysMax} dias úteis ({shipping.region})
+                          Produção sob medida após confirmação do pedido
                         </p>
                       </div>
                     </motion.div>
@@ -1267,7 +1267,7 @@ export default function Checkout() {
 
               {shipping && (
                 <p className="text-xs text-muted-foreground mt-4" data-testid="text-delivery-estimate">
-                  Entrega estimada: {shipping.daysMin}-{shipping.daysMax} dias úteis
+                  Produção sob medida após confirmação do pedido
                 </p>
               )}
 
