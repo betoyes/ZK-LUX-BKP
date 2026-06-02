@@ -327,10 +327,10 @@ export default function Atelier() {
           
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
-              { icon: Clock, title: "Peças em Estoque", time: "2-3 dias úteis", desc: "Após confirmação do pagamento" },
-              { icon: Gem, title: "Produção Padrão", time: "15-25 dias úteis", desc: "Tamanho ou acabamento customizado" },
-              { icon: Sparkles, title: "Sob Medida", time: "30-45 dias úteis", desc: "Projetos exclusivos e personalizados" },
-              { icon: Shield, title: "Ajustes e Reparos", time: "5-10 dias úteis", desc: "Redimensionamento e polimento" }
+              { icon: Clock, title: "Peças em Estoque", time: "Sob medida", desc: "Após confirmação do pagamento" },
+              { icon: Gem, title: "Produção Padrão", time: "Sob medida", desc: "Tamanho ou acabamento customizado" },
+              { icon: Sparkles, title: "Sob Medida", time: "Sob medida", desc: "Projetos exclusivos e personalizados" },
+              { icon: Shield, title: "Ajustes e Reparos", time: "Sob medida", desc: "Redimensionamento e polimento" }
             ].map((item, i) => (
               <motion.div
                 key={i}

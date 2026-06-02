@@ -510,13 +510,13 @@ export default function Product() {
                   </AccordionTrigger>
                   <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
                     <p>
-                      Oferecemos envio expresso para todo o Brasil com rastreamento completo. 
-                      Peças em estoque são despachadas em até 2 dias úteis.
+                      Oferecemos envio expresso para todo o Brasil com rastreamento completo.
+                      Produção sob medida após a confirmação do pedido.
                     </p>
                     <p>
                       Aceitamos devoluções em até 14 dias após a entrega, desde que a peça esteja 
-                      na embalagem original e em perfeitas condições. O reembolso é processado 
-                      em até 7 dias úteis após recebermos o produto.
+                      na embalagem original e em perfeitas condições. O reembolso é processado
+                      após recebermos o produto.
                     </p>
                     <a 
                       href="https://wa.me/5511999999999?text=Olá! Tenho uma dúvida sobre envio ou devolução."
@@ -587,11 +587,11 @@ export default function Product() {
                   </AccordionTrigger>
                   <AccordionContent className="text-muted-foreground font-light pb-6 space-y-3">
                     <p>
-                      <strong className="text-foreground">Peças em estoque:</strong> Envio em até 2 dias úteis após confirmação do pagamento.
+                      <strong className="text-foreground">Peças em estoque:</strong> Envio após a confirmação do pagamento.
                     </p>
                     <p>
-                      <strong className="text-foreground">Produção sob encomenda:</strong> Prazo de 15 a 25 dias úteis, dependendo 
-                      da complexidade da peça. Você receberá atualizações durante todo o processo.
+                      <strong className="text-foreground">Produção sob encomenda:</strong> produção sob medida após a confirmação do pedido,
+                      conforme a complexidade da peça. Você receberá atualizações durante todo o processo.
                     </p>
                     <p>
                       <strong className="text-foreground">Ajustes de tamanho:</strong> Oferecemos o primeiro ajuste gratuito para 
