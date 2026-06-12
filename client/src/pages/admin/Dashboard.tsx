@@ -374,43 +374,44 @@ export default function Dashboard() {
   const [colFormData, setColFormData] = useState({ name: '', description: '', image: '' });
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   
+  // Helper para upload para Cloudflare R2
+  const uploadFileToR2 = async (file) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await fetch('/api/admin/upload', { method: 'POST', body: fd, credentials: 'include' });
+    if (!res.ok) throw new Error('Erro no upload');
+    const data = await res.json();
+    return data.url;
+  };
+
   // Helper for file upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'image' | 'imageColor') => {
+  const handleImageUpload = async (e, field) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      try { const url = await uploadFileToR2(file); setFormData(prev => ({ ...prev, [field]: url })); }
+      catch (err) { console.error('Erro upload:', err); }
     }
   };
 
-  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryUpload = async (e) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFormData(prev => ({ ...prev, gallery: [...prev.gallery, reader.result as string] }));
-        };
-        reader.readAsDataURL(file);
-      });
+      for (const file of Array.from(files)) {
+        try { const url = await uploadFileToR2(file); setFormData(prev => ({ ...prev, gallery: [...prev.gallery, url] })); }
+        catch (err) { console.error('Erro galeria:', err); }
+      }
     }
   };
 
-  const handleCollectionImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCollectionImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setColFormData(prev => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      try { const url = await uploadFileToR2(file); setColFormData(prev => ({ ...prev, image: url })); }
+      catch (err) { console.error('Erro colecao:', err); }
     }
   };
 
-  const removeGalleryImage = (index: number) => {
+  const removeGalleryImage = (index) => {
     setFormData(prev => ({
       ...prev,
       gallery: prev.gallery.filter((_, i) => i !== index)
@@ -418,26 +419,20 @@ export default function Dashboard() {
   };
 
   // Handle version image upload for rings
-  const handleVersionUpload = (e: React.ChangeEvent<HTMLInputElement>, versionField: 'version1' | 'version2' | 'version3') => {
+  const handleVersionUpload = async (e, versionField) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, [versionField]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      try { const url = await uploadFileToR2(file); setFormData(prev => ({ ...prev, [versionField]: url })); }
+      catch (err) { console.error('Erro versao:', err); }
     }
   };
 
   // Handle video upload
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'video' | 'video2') => {
+  const handleVideoUpload = async (e, field) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      try { const url = await uploadFileToR2(file); setFormData(prev => ({ ...prev, [field]: url })); }
+      catch (err) { console.error('Erro video:', err); }
     }
   };
   
