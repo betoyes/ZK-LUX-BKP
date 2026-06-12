@@ -42,7 +42,7 @@ app.use(
           ? ["'self'", "'unsafe-inline'"]
           : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "https:", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         mediaSrc: ["'self'", "data:", "blob:", "https:"],
         frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"],
