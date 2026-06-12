@@ -26,8 +26,10 @@ import {
   createPixPaymentSchema,
   createCreditCardPaymentSchema,
   updateUserProfileSchema,
-  type User,
+type User,
 } from "@shared/schema";
+import multer from "multer";
+import { uploadToR2 } from "./r2";
 import {
   sendPasswordResetEmail,
   sendAdminNotification,
@@ -1279,6 +1281,41 @@ export async function registerRoutes(
       : "admin@localhost");
 
   // Get all admins (only primary admin can access)
+  // Upload de imagem para Cloudflare R2
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Formato inválido. Use JPG, PNG ou WebP."));
+      }
+    },
+  });
+
+  app.post(
+    "/api/admin/upload",
+    requireAdmin,
+    upload.single("image"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "Nenhuma imagem enviada." });
+        }
+        const url = await uploadToR2(
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype
+        );
+        res.json({ url });
+      } catch (error: any) {
+        console.error("Erro no upload R2:", error);
+        res.status(500).json({ error: error.message || "Erro no upload." });
+      }
+    }
+  );
   app.get("/api/admin/users", requireAdmin, async (req, res, next) => {
     try {
       if (req.user?.username !== PRIMARY_ADMIN_EMAIL) {
